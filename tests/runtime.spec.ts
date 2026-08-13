@@ -51,6 +51,22 @@ describe('GithubRuntime', () => {
     } finally { await rm(path, { recursive: true, force: true }) }
   })
 
+  it('uses configured pushDefault and encodes GitHub links safely', async () => {
+    const path = await tempRepo()
+    try {
+      await git(path, 'remote', 'add', 'work', 'git@github.com:owner/repo-name.git')
+      await git(path, 'config', 'remote.pushDefault', 'work')
+      await expect(new GithubRuntime(new Context(), config).getStatus(path)).resolves.toMatchObject({
+        remoteName: 'work', remoteUrl: 'git@github.com:owner/repo-name.git', githubUrl: 'https://github.com/owner/repo-name',
+      })
+      await git(path, 'remote', 'set-url', 'work', 'https://github.com/owner/repo-name.git')
+      await git(path, 'switch', '-c', 'feature/topic/name')
+      await expect(new GithubRuntime(new Context(), config).getRepositoryOverview(path)).resolves.toMatchObject({
+        branches: expect.arrayContaining([expect.objectContaining({ name: 'feature/topic/name', branchUrl: 'https://github.com/owner/repo-name/tree/feature/topic/name' })]),
+      })
+    } finally { await rm(path, { recursive: true, force: true }) }
+  })
+
   it('uses the current branch remote instead of assuming origin', async () => {
     const path = await tempRepo()
     try {
@@ -169,9 +185,9 @@ describe('GithubRuntime', () => {
       await git(path, 'switch', '-c', 'feature/source-control')
       await expect(new GithubRuntime(new Context(), config).getRepositoryOverview(path)).resolves.toMatchObject({
         githubUrl: 'https://github.com/owner/repo',
-        compareUrl: 'https://github.com/owner/repo/compare/main...feature%2Fsource-control?expand=1',
+        compareUrl: 'https://github.com/owner/repo/compare/main...feature/source-control?expand=1',
         branches: expect.arrayContaining([
-          expect.objectContaining({ name: 'feature/source-control', branchUrl: 'https://github.com/owner/repo/tree/feature%2Fsource-control' }),
+          expect.objectContaining({ name: 'feature/source-control', branchUrl: 'https://github.com/owner/repo/tree/feature/source-control' }),
           expect.objectContaining({ name: 'main', remote: false, branchUrl: 'https://github.com/owner/repo/tree/main' }),
         ]),
       })

@@ -80,7 +80,9 @@ function remoteForDisplay(remoteUrl: string | null): string | null {
 function githubUrl(remoteUrl: string | null): string | null {
   if (remoteUrl === null) return null
   const match = remoteUrl.match(/^(?:https?:\/\/|ssh:\/\/git@|git@)(github\.com)[:/]([^/]+\/[^/]+?)(?:\.git)?$/i)
-  return match === null ? null : `https://${match[1]}/${match[2]}`
+  if (match === null) return null
+  const repository = match[2]!.split('/').map(part => encodeURIComponent(part)).join('/')
+  return `https://${match[1]}/${repository}`
 }
 
 function trimOutput(text: string, maxBytes: number): { text: string; truncated: boolean } {
@@ -115,7 +117,7 @@ function parseBranches(output: string, remoteName: string | null): GitBranch[] {
 }
 
 function branchUrl(repositoryUrl: string | null, branch: string): string | null {
-  return repositoryUrl === null ? null : `${repositoryUrl}/tree/${encodeURIComponent(branch)}`
+  return repositoryUrl === null ? null : `${repositoryUrl}/tree/${branch.split('/').map(encodeURIComponent).join('/')}`
 }
 
 function compareUrl(repositoryUrl: string | null, branch: string, upstream: string | null, defaultBranch: string | null): string | null {
@@ -123,7 +125,9 @@ function compareUrl(repositoryUrl: string | null, branch: string, upstream: stri
   const slash = upstream?.indexOf('/') ?? -1
   const base = upstream === null ? defaultBranch : slash < 0 ? upstream : upstream.slice(slash + 1)
   if (base === null || base === branch) return null
-  return `${repositoryUrl}/compare/${encodeURIComponent(base)}...${encodeURIComponent(branch)}?expand=1`
+  const encodedBase = base.split('/').map(encodeURIComponent).join('/')
+  const encodedBranch = branch.split('/').map(encodeURIComponent).join('/')
+  return `${repositoryUrl}/compare/${encodedBase}...${encodedBranch}?expand=1`
 }
 
 /** Host-side Remote service for local Git state and GitHub browser links. */
@@ -141,9 +145,9 @@ export class GithubRuntime extends TypertRemoteService {
     const configured = await git(['config', '--get', `branch.${branch}.remote`], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
     if (configured === '.') return null
     const upstreamRemote = upstream?.split('/', 1)[0] ?? ''
-    const name = configured ? configured : upstreamRemote || await git(['remote', 'get-url', '--all', 'origin'], { cwd: root, signal }).then(() => 'origin').catch(async () => {
-      return (await git(['remote'], { cwd: root, signal }).catch(() => '')).split(/\s+/).find(Boolean) ?? ''
-    })
+    const pushDefault = await git(['config', '--get', 'remote.pushDefault'], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
+    const remotes = (await git(['remote'], { cwd: root, signal }).catch(() => '')).split(/\s+/).filter(Boolean)
+    const name = configured || upstreamRemote || pushDefault || remotes[0] || ''
     if (!name) return null
     const url = await git(['remote', 'get-url', name], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
     return url ? { name, url } : null
@@ -240,7 +244,7 @@ export class GithubRuntime extends TypertRemoteService {
     return this.getStatus(status.root, signal)
   }
 
-  /** Fetch origin and return status with refreshed ahead/behind counts. */
+  /** Fetch the selected Git remote and return status with refreshed ahead/behind counts. */
   @Remote
   async fetch(path: string, signal?: AbortSignal): Promise<GitStatus> {
     const status = await this.getStatus(path, signal)
@@ -275,7 +279,7 @@ export class GithubRuntime extends TypertRemoteService {
     return checked
   }
 
-  /** Checkout a local or origin branch without stashing or discarding changes. */
+  /** Checkout a local or selected-remote branch without stashing or discarding changes. */
   @Remote
   async checkoutBranch(path: string, branch: string, remote: boolean, signal?: AbortSignal): Promise<GitStatus> {
     const root = await this.root(path, signal)
@@ -299,7 +303,7 @@ export class GithubRuntime extends TypertRemoteService {
     return this.getStatus(root, signal)
   }
 
-  /** Read local/origin branches and browser links derived from the configured GitHub remote. */
+  /** Read local and selected-remote branches and browser links derived from the configured GitHub remote. */
   @Remote
   async getRepositoryOverview(path: string, signal?: AbortSignal): Promise<GitRepositoryOverview> {
     const root = await this.root(path, signal)

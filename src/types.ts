@@ -47,17 +47,17 @@ export interface GitDiff {
   truncated: boolean
 }
 
-/** One local or origin branch shown in the repository view. */
+/** One local or selected-remote branch shown in the repository view. */
 export interface GitBranch {
   /** Short branch name. */
   name: string
   /** Whether HEAD currently points to this branch. */
   current: boolean
-  /** Whether this is an origin remote-tracking branch. */
+  /** Whether this is a remote-tracking branch. */
   remote: boolean
   /** Configured upstream branch, when present. */
   upstream: string | null
-  /** Browser URL for this branch when the origin is a GitHub repository. */
+  /** Browser URL for this branch when the selected remote is a GitHub repository. */
   branchUrl: string | null
 }
 
