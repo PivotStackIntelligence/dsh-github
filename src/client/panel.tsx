@@ -51,7 +51,11 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   const [stagedExpanded, setStagedExpanded] = useState(true)
   const [workingExpanded, setWorkingExpanded] = useState(true)
   const [untrackedExpanded, setUntrackedExpanded] = useState(true)
+  const [conflictsExpanded, setConflictsExpanded] = useState(true)
   const [newBranch, setNewBranch] = useState('')
+  const statusRequest = useRef<{ id: number; controller: AbortController } | null>(null)
+  const overviewRequest = useRef<{ id: number; controller: AbortController } | null>(null)
+  const requestId = useRef(0)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
 
@@ -68,21 +72,37 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   }
 
   const refresh = (clearError = true): void => {
+    statusRequest.current?.controller.abort()
+    const request = { id: ++requestId.current, controller: new AbortController() }
+    statusRequest.current = request
     setLoading(true)
     if (clearError) { setError(null); setNotice(null) }
-    void actions.getStatus(path).then(result => {
+    void actions.getStatus(path, request.controller.signal).then(result => {
+      if (request.id !== statusRequest.current?.id) return
       if (!result.ok) throw new Error(result.error.message)
       acceptStatus(result.value)
-    }).catch(reason => setError(errorMessage(reason))).finally(() => setLoading(false))
+    }).catch(reason => {
+      if (request.id === statusRequest.current?.id && !request.controller.signal.aborted) setError(errorMessage(reason))
+    }).finally(() => {
+      if (request.id === statusRequest.current?.id) setLoading(false)
+    })
   }
 
   const refreshOverview = (): void => {
+    overviewRequest.current?.controller.abort()
+    const request = { id: ++requestId.current, controller: new AbortController() }
+    overviewRequest.current = request
     setOverviewLoading(true)
     setError(null)
-    void actions.getRepositoryOverview(path).then(result => {
+    void actions.getRepositoryOverview(path, request.controller.signal).then(result => {
+      if (request.id !== overviewRequest.current?.id) return
       if (!result.ok) throw new Error(result.error.message)
       setOverview(result.value)
-    }).catch(reason => setError(errorMessage(reason))).finally(() => setOverviewLoading(false))
+    }).catch(reason => {
+      if (request.id === overviewRequest.current?.id && !request.controller.signal.aborted) setError(errorMessage(reason))
+    }).finally(() => {
+      if (request.id === overviewRequest.current?.id) setOverviewLoading(false)
+    })
   }
 
   useEffect(() => {
@@ -104,10 +124,14 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
       document.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVisibility)
+      statusRequest.current?.controller.abort()
+      overviewRequest.current?.controller.abort()
       previousFocus.current?.focus()
     }
   }, [path, onClose])
   useEffect(() => { if (tab === 'repository') refreshOverview() }, [path, tab])
+  const selectedFile = selected === null ? undefined : status?.files.find(file => file.path === selected.path)
+  const selectedFileSignature = selectedFile === undefined ? '' : `${selectedFile.index}:${selectedFile.worktree}:${selectedFile.kind}`
   useEffect(() => {
     if (selected === null) { setDiff(null); return }
     const controller = new AbortController()
@@ -117,7 +141,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
       else setError(result.error.message)
     }).catch(reason => { if (!controller.signal.aborted) setError(errorMessage(reason)) })
     return () => controller.abort()
-  }, [path, selected?.path, selected?.mode, status])
+  }, [path, selected?.path, selected?.mode, selectedFileSignature])
 
   const runStatusAction = (name: Exclude<Operation, null>, action: () => Promise<RemoteResult<GitStatus>>, clearMessage = false): void => {
     setOperation(name)
@@ -142,24 +166,28 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
     setOperation('commitAndPush')
     setError(null)
     setNotice(null)
+    let committed = false
     void actions.commit(path, message.trim()).then(result => {
       if (!result.ok) throw new Error(result.error.message)
+      committed = true
       acceptStatus(result.value)
+      setMessage('')
       return actions.push(path)
     }).then(result => {
       if (!result.ok) throw new Error(result.error.message)
       acceptStatus(result.value)
-      setMessage('')
       setNotice(t('panel.success.commitAndPush'))
     }).catch(reason => {
       setNotice(null)
-      setError(errorMessage(reason))
+      const detail = errorMessage(reason)
+      setError(committed ? `${t('panel.commitCreatedPushFailed')} ${detail}` : detail)
       refresh(false)
     }).finally(() => setOperation(null))
   }
 
-  const staged = status?.files.filter(file => hasMode(file, 'staged')) ?? []
-  const workingFiles = status?.files.filter(file => hasMode(file, 'working')) ?? []
+  const conflicts = status?.files.filter(file => file.kind === 'conflict') ?? []
+  const staged = status?.files.filter(file => file.kind !== 'conflict' && hasMode(file, 'staged')) ?? []
+  const workingFiles = status?.files.filter(file => file.kind !== 'conflict' && hasMode(file, 'working')) ?? []
   const untracked = workingFiles.filter(file => file.kind === 'untracked')
   const working = workingFiles.filter(file => file.kind !== 'untracked')
   const canCommit = operation === null && message.trim() !== '' && staged.length > 0
@@ -186,7 +214,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
       <span className={`kind kind-${file.kind}`}>{badge(file)}</span><span className="dsh-github-change-path" title={file.previousPath ? `${file.previousPath} → ${file.path}` : file.path}><span>{file.path}</span>{file.previousPath ? <small>{file.previousPath} ←</small> : null}</span>
     </button>
     <button type="button" className="dsh-github-change-open" disabled={file.kind === 'deleted'} aria-label={`${t('panel.openFile')}: ${file.path}`} title={t('panel.openFile')} onClick={() => { void actions.openFile(status?.root ?? path, file.path).catch(reason => setError(errorMessage(reason))) }}>⌕</button>{file.fileUrl ? <button type="button" className="dsh-github-change-open" aria-label={`${t('panel.openFileOnGithub')}: ${file.path}`} title={t('panel.openFileOnGithub')} onClick={() => openUrl(file.fileUrl!)}>↗</button> : null}
-    <button type="button" className="dsh-github-change-action" disabled={operation !== null} aria-label={mode === 'staged' ? t('panel.unstage') : t('panel.stage')} title={mode === 'staged' ? t('panel.unstage') : t('panel.stage')} onClick={() => runStatusAction(mode === 'staged' ? 'unstage' : 'stage', () => mode === 'staged' ? actions.unstage(path, file.path) : actions.stage(path, file.path))}>{mode === 'staged' ? '−' : '+'}</button>
+    {file.kind !== 'conflict' ? <button type="button" className="dsh-github-change-action" disabled={operation !== null} aria-label={mode === 'staged' ? t('panel.unstage') : t('panel.stage')} title={mode === 'staged' ? t('panel.unstage') : t('panel.stage')} onClick={() => runStatusAction(mode === 'staged' ? 'unstage' : 'stage', () => mode === 'staged' ? actions.unstage(path, file.path) : actions.stage(path, file.path))}>{mode === 'staged' ? '−' : '+'}</button> : null}
   </div>
 
   const group = (mode: GitDiffMode, files: GitFileChange[], title: DshGithubKey, expanded: boolean, setExpanded: (value: boolean) => void) => <section className="dsh-github-change-group">
@@ -236,6 +264,12 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
           {group('staged', staged, 'panel.stagedChanges', stagedExpanded, setStagedExpanded)}
           {group('working', working, 'panel.changes', workingExpanded, setWorkingExpanded)}
           {group('working', untracked, 'panel.untrackedChanges', untrackedExpanded, setUntrackedExpanded)}
+          {conflicts.length > 0 ? <section className="dsh-github-change-group dsh-github-conflict-group">
+            <div className="dsh-github-change-group-header">
+              <button type="button" className="dsh-github-group-toggle" aria-expanded={conflictsExpanded} onClick={() => setConflictsExpanded(!conflictsExpanded)}><span>{conflictsExpanded ? '⌄' : '›'}</span>{t('panel.mergeChanges')} <b>{conflicts.length}</b></button>
+            </div>
+            {conflictsExpanded ? conflicts.map(file => changeRow(file, 'working')) : null}
+          </section> : null}
           {status.files.length === 0 ? <p className="dsh-github-panel-message compact">{t('panel.clean')}</p> : null}
           {status.truncated ? <p className="dsh-github-panel-message compact">{t('panel.fileListTruncated')}</p> : null}
         </aside>
