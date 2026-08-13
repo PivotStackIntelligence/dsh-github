@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
@@ -166,9 +166,11 @@ describe('GithubRuntime', () => {
     await expect(new GithubRuntime(new Context(), config).getStatus('relative')).rejects.toThrow(/relative path/)
     const path = await tempRepo()
     try {
-      await writeFile(`${path}/large.txt`, 'x'.repeat(500))
+      await mkdir(`${path}/untracked`, { recursive: true })
+      await writeFile(`${path}/untracked/large.txt`, 'x'.repeat(500))
       const runtime = new GithubRuntime(new Context(), { ...config, maxDiffBytes: 32, maxUntrackedBytes: 32 })
-      expect((await runtime.getDiff(path, 'large.txt', 'working')).truncated).toBe(true)
+      await expect(runtime.getStatus(path)).resolves.toMatchObject({ files: [expect.objectContaining({ path: 'untracked/large.txt', kind: 'untracked' })] })
+      expect((await runtime.getDiff(path, 'untracked/large.txt', 'working')).truncated).toBe(true)
       await expect(runtime.getDiff(path, '../outside.txt', 'working')).rejects.toThrow(/escapes repository root/)
       await expect(runtime.getDiff(path, '/tmp/outside.txt', 'working')).rejects.toThrow(/repository-relative/)
     } finally { await rm(path, { recursive: true, force: true }) }

@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
+import { open } from 'node:fs/promises'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { promisify } from 'node:util'
 import type { Context } from '@deepseek-ai/cordis'
@@ -106,6 +106,18 @@ function syntheticUntrackedDiff(filePath: string, text: string): string {
   return [`diff --git a/${filePath} b/${filePath}`, 'new file mode 100644', '--- /dev/null', `+++ b/${filePath}`, `@@ -0,0 +${lines.length} @@`, ...lines.map(line => `+${line}`)].join('\n') + '\n'
 }
 
+async function readBoundedUntrackedFile(filePath: string, maxBytes: number): Promise<{ text: string; truncated: boolean; binary: boolean }> {
+  const handle = await open(filePath, 'r')
+  try {
+    const buffer = Buffer.alloc(maxBytes + 1)
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0)
+    const bytes = buffer.subarray(0, bytesRead)
+    return { text: bytes.toString('utf8'), truncated: bytesRead > maxBytes, binary: bytes.includes(0) }
+  } finally {
+    await handle.close()
+  }
+}
+
 function parseBranches(output: string, remoteName: string | null): GitBranch[] {
   const remotePrefix = remoteName === null ? null : `${remoteName}/`
   const remoteRefPrefix = remoteName === null ? null : `refs/remotes/${remoteName}/`
@@ -167,7 +179,7 @@ export class GithubRuntime extends TypertRemoteService {
       ahead = Number.parseInt(aheadText ?? '0', 10) || 0
     }
     const remote = await this.remoteForBranch(root, branch, upstream, signal)
-    const parsed = parseStatus(await git(['status', '--porcelain=v1', '-z'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 1024) }), this.config.maxFiles)
+    const parsed = parseStatus(await git(['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 1024) }), this.config.maxFiles)
     return { root, branch, upstream, ahead, behind, remoteName: remote?.name ?? null, remoteUrl: remoteForDisplay(remote?.url ?? null), githubUrl: githubUrl(remote?.url ?? null), ...parsed }
   }
 
@@ -176,13 +188,12 @@ export class GithubRuntime extends TypertRemoteService {
   async getDiff(path: string, filePath: string, mode: GitDiffMode, signal?: AbortSignal): Promise<GitDiff> {
     const root = await this.root(path, signal)
     const safePath = validateFilePath(root, filePath)
-    const status = parseStatus(await git(['status', '--porcelain=v1', '-z'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 4 * 1024) }), this.config.maxFiles * 4).files.find(file => file.path === safePath)
+    const status = parseStatus(await git(['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 4 * 1024) }), this.config.maxFiles * 4).files.find(file => file.path === safePath)
     let diff: string
     let truncated = false
     if (mode === 'working' && status?.kind === 'untracked') {
-      const contents = await readFile(resolve(root, safePath))
-      if (contents.includes(0)) return { path: safePath, diff: `Binary file ${safePath} is not shown.\n`, truncated: false }
-      const bounded = trimOutput(contents.toString('utf8'), this.config.maxUntrackedBytes)
+      const bounded = await readBoundedUntrackedFile(resolve(root, safePath), this.config.maxUntrackedBytes)
+      if (bounded.binary) return { path: safePath, diff: `Binary file ${safePath} is not shown.\n`, truncated: bounded.truncated }
       diff = syntheticUntrackedDiff(safePath, bounded.text)
       truncated = bounded.truncated
     } else {
