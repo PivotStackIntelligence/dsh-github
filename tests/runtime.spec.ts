@@ -75,6 +75,20 @@ describe('GithubRuntime', () => {
     } finally { await rm(path, { recursive: true, force: true }) }
   })
 
+  it('parses credentialed HTTPS and port-qualified SSH GitHub remotes', async () => {
+    const path = await tempRepo()
+    try {
+      await git(path, 'remote', 'add', 'origin', 'https://user:secret@github.com/owner/repo.git')
+      await expect(new GithubRuntime(new Context(), config).getStatus(path)).resolves.toMatchObject({
+        remoteUrl: 'https://github.com/owner/repo.git', githubUrl: 'https://github.com/owner/repo',
+      })
+      await git(path, 'remote', 'set-url', 'origin', 'ssh://git@github.com:22/owner/repo.git')
+      await expect(new GithubRuntime(new Context(), config).getStatus(path)).resolves.toMatchObject({
+        remoteUrl: 'ssh://github.com:22/owner/repo.git', githubUrl: 'https://github.com/owner/repo',
+      })
+    } finally { await rm(path, { recursive: true, force: true }) }
+  })
+
   it('uses the current branch remote instead of assuming origin', async () => {
     const path = await tempRepo()
     try {
@@ -259,6 +273,15 @@ describe('GithubRuntime', () => {
       await rm(remote, { recursive: true, force: true })
       await rm(clone, { recursive: true, force: true })
     }
+  })
+
+  it('explains when a remote branch has not been fetched', async () => {
+    const path = await tempRepo()
+    try {
+      await git(path, 'remote', 'add', 'origin', 'git@github.com:owner/repo.git')
+      const runtime = new GithubRuntime(new Context(), config)
+      await expect(runtime.checkoutBranch(path, 'feature/missing', true)).rejects.toThrow('is not fetched')
+    } finally { await rm(path, { recursive: true, force: true }) }
   })
 
   it('creates branches and checks out local or remote branches safely', async () => {

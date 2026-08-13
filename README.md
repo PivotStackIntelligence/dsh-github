@@ -13,7 +13,7 @@ A Source Control and GitHub repository panel for DeepSeek Harness.
 - Lists local branches and the current branch remote's tracking branches, checks them out, and creates local branches.
 - Derives GitHub repository, branch, and compare links from the configured branch remote, then opens those pages in the browser. The compare page is the handoff point for creating a pull request.
 
-The plugin uses the repository's normal local Git configuration. It does not store GitHub tokens, implement OAuth, depend on GitHub CLI, or expose arbitrary shell commands. Git writes require an explicit user action, and repository state is reloaded after each operation.
+The plugin uses the repository's normal local Git configuration, SSH keys, HTTPS credential helpers, and Git remotes. It does not call the GitHub API, store GitHub tokens, implement OAuth, depend on GitHub CLI, or expose arbitrary shell commands. GitHub links open the corresponding browser pages; the Compare page is the handoff for creating a pull request. Git writes require an explicit user action, and repository state is reloaded after each operation.
 
 ## Requirements
 

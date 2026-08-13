@@ -82,10 +82,18 @@ function remoteForDisplay(remoteUrl: string | null): string | null {
 
 function githubUrl(remoteUrl: string | null): string | null {
   if (remoteUrl === null) return null
-  const match = remoteUrl.match(/^(?:https?:\/\/|ssh:\/\/git@|git@)(github\.com)[:/]([^/]+\/[^/]+?)(?:\.git)?$/i)
-  if (match === null) return null
-  const repository = match[2]!.split('/').map(part => encodeURIComponent(part)).join('/')
-  return `https://${match[1]}/${repository}`
+  let path: string
+  const scp = remoteUrl.match(/^git@github\.com:(.+)$/i)
+  if (scp !== null) path = scp[1]!
+  else {
+    let parsed: URL
+    try { parsed = new URL(remoteUrl) } catch { return null }
+    if (parsed.hostname.toLowerCase() !== 'github.com' || !['http:', 'https:', 'ssh:', 'git:', 'git+ssh:'].includes(parsed.protocol)) return null
+    path = parsed.pathname
+  }
+  const parts = path.replace(/^\/+|\/+$/g, '').replace(/\.git$/i, '').split('/')
+  if (parts.length !== 2 || parts.some(part => part === '')) return null
+  return `https://github.com/${parts.map(encodeURIComponent).join('/')}`
 }
 
 function trimOutput(text: string, maxBytes: number): { text: string; truncated: boolean } {
@@ -315,6 +323,9 @@ export class GithubRuntime extends TypertRemoteService {
     const localExists = await git(['show-ref', '--verify', '--quiet', `refs/heads/${checked}`], { cwd: root, signal }).then(() => true).catch(() => false)
     if (remote && !localExists) {
       if (status.remoteName === null) throw new Error('dsh-github: no configured remote is available for this branch')
+      const remoteRef = `refs/remotes/${status.remoteName}/${checked}`
+      const fetched = await git(['show-ref', '--verify', '--quiet', remoteRef], { cwd: root, signal }).then(() => true).catch(() => false)
+      if (!fetched) throw new Error(`dsh-github: remote branch ${status.remoteName}/${checked} is not fetched. Fetch the remote, then try again.`)
       await gitWrite(['switch', '--track', `${status.remoteName}/${checked}`], { cwd: root, signal })
     } else {
       await gitWrite(['switch', checked], { cwd: root, signal })

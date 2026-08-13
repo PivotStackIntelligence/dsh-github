@@ -12,7 +12,7 @@
 - 查看本地分支与当前分支远程的远程跟踪分支，在面板中切换分支并创建新的本地分支。
 - 根据当前分支使用的 Git remote 生成 GitHub 仓库、分支和 compare 链接，并在浏览器打开这些页面。
 
-插件使用仓库现有的本地 Git 配置，不保存 GitHub token、不实现 OAuth、不依赖 GitHub CLI，也不暴露任意 shell 命令。Git 写操作需要用户明确触发，并在完成后重新读取仓库状态。
+插件使用仓库现有的本地 Git 配置、SSH 密钥、HTTPS credential helper 和 Git remote。不调用 GitHub API、不保存 GitHub token、不实现 OAuth、不依赖 GitHub CLI，也不暴露任意 shell 命令。GitHub 链接只打开对应的浏览器页面；Compare 页面是创建 pull request 的交接入口。Git 写操作需要用户明确触发，并在完成后重新读取仓库状态。
 
 ## 环境要求
 
