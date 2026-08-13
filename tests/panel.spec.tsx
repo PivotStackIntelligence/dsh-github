@@ -77,4 +77,26 @@ describe('GithubChangesPanel', () => {
     await act(async () => root.unmount())
   })
 
+
+  it('keeps keyboard focus inside the panel', async () => {
+    const mount = document.createElement('div')
+    document.body.appendChild(mount)
+    const root = createRoot(mount)
+    await act(async () => {
+      root.render(<GithubChangesPanel path="/repo" title="repo" actions={actions} t={t} onClose={vi.fn()} />)
+      await Promise.resolve()
+    })
+
+    const focusable = [...mount.querySelectorAll<HTMLElement>('button:not(:disabled), textarea:not(:disabled), input:not(:disabled), a[href]')]
+    const first = focusable[0]
+    const last = focusable.at(-1)
+    expect(first).toBeDefined()
+    expect(last).toBeDefined()
+    last?.focus()
+    await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true })) })
+    expect(document.activeElement).toBe(first)
+
+    await act(async () => root.unmount())
+  })
+
 })

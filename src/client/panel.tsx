@@ -59,6 +59,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   const statusRequest = useRef<{ id: number; controller: AbortController } | null>(null)
   const overviewRequest = useRef<{ id: number; controller: AbortController } | null>(null)
   const requestId = useRef(0)
+  const panelRef = useRef<HTMLElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
 
@@ -113,7 +114,14 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
     refresh()
     closeButtonRef.current?.focus()
     const onKeyDown = (event: globalThis.KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') { onClose(); return }
+      if (event.key !== 'Tab' || panelRef.current === null) return
+      const focusable = [...panelRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), textarea:not(:disabled), input:not(:disabled), a[href]')]
+      if (focusable.length === 0) { event.preventDefault(); panelRef.current.focus(); return }
+      const current = focusable.indexOf(document.activeElement as HTMLElement)
+      const next = event.shiftKey ? current <= 0 ? focusable.length - 1 : current - 1 : current === focusable.length - 1 ? 0 : current + 1
+      event.preventDefault()
+      focusable[next]?.focus()
     }
     const onFocus = (): void => {
       refresh(false)
@@ -234,7 +242,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
 
   return <div className="dsh-github-panel-root" role="dialog" aria-modal="true" aria-label={t('panel.title')}>
     <div className="dsh-github-panel-mask" aria-hidden="true" onClick={onClose} />
-    <section className="dsh-github-panel" tabIndex={-1}>
+    <section ref={panelRef} className="dsh-github-panel" tabIndex={-1}>
       <header className="dsh-github-panel-header">
         <div><strong>{title}</strong><small>{status?.root ?? path}</small></div>
         <div className="dsh-github-panel-actions">
