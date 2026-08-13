@@ -8,6 +8,10 @@ export interface GitFileChange {
   worktree: string
   /** Whether the path is untracked, added, deleted, renamed, copied, or modified. */
   kind: 'untracked' | 'added' | 'deleted' | 'renamed' | 'copied' | 'conflict' | 'modified'
+  /** Previous repository-relative path for a rename or copy status. */
+  previousPath?: string
+  /** Browser URL for this file at the current local HEAD, when GitHub is detected. */
+  fileUrl: string | null
 }
 
 /** Repository metadata and the current change list. */
@@ -28,6 +32,10 @@ export interface GitStatus {
   remoteUrl: string | null
   /** Browser URL for a github.com remote, when detected. */
   githubUrl: string | null
+  /** Full local HEAD commit SHA. */
+  headSha: string
+  /** Browser URL for the local HEAD commit, when GitHub is detected. */
+  commitUrl: string | null
   /** Changed files, capped by configuration. */
   files: GitFileChange[]
   /** True when the file list was capped. */

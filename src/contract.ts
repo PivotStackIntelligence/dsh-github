@@ -15,12 +15,13 @@ export const branchNameSchema = z.string().trim().min(1).max(255)
 const fileChangeSchema = z.object({
   path: z.string(), index: z.string(), worktree: z.string(),
   kind: z.enum(['untracked', 'added', 'deleted', 'renamed', 'copied', 'conflict', 'modified']),
+  previousPath: z.string().optional(), fileUrl: z.string().nullable(),
 }).readonly()
 
 /** Wire codec for the repository status projection. */
 export const statusResultSchema = z.object({
   root: z.string(), branch: z.string(), upstream: z.string().nullable(), remoteName: z.string().nullable(),
-  ahead: z.number(), behind: z.number(), remoteUrl: z.string().nullable(),
+  ahead: z.number(), behind: z.number(), remoteUrl: z.string().nullable(), headSha: z.string(), commitUrl: z.string().nullable(),
   githubUrl: z.string().nullable(), files: z.array(fileChangeSchema), truncated: z.boolean(),
 }).readonly()
 

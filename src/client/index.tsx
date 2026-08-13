@@ -18,6 +18,10 @@ import type { GitDiff, GitDiffMode, GitRepositoryOverview, GitStatus } from '../
 export const inject = ['slots', 'remote', 'locale', 'workspaces']
 
 type RemoteError = { code: string; message: string; details: object }
+
+function resolveWorkspacePath(cwd: string, filePath: string): string {
+  return filePath.startsWith('/') || /^[A-Za-z]:[/\\]/.test(filePath) || filePath.startsWith('\\\\') ? filePath : `${cwd.replace(/[/\\]+$/, '')}/${filePath.replace(/^[/\\]+/, '')}`
+}
 type RemoteResult<T> = { ok: true; value: T } | { ok: false; error: RemoteError }
 
 /** The mounted local Git Remote namespace. */
@@ -129,6 +133,9 @@ export function apply(ctx: ClientContext): void {
     getRepositoryOverview: (path, signal) => {
       if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
       return github.getRepositoryOverview(path, signal)
+    },
+    openFile: async (root, filePath) => {
+      await ctx.workspaces.openPath(resolveWorkspacePath(root, filePath))
     },
   }
 

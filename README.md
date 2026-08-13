@@ -5,7 +5,8 @@ A Source Control and GitHub repository panel for DeepSeek Harness.
 ## Features
 
 - Shows the active workspace branch, upstream, ahead/behind counts, and changed files.
-- Groups staged and working-tree changes with bounded diff previews.
+- Groups staged, working-tree, and untracked changes with bounded diff previews.
+- Opens changed files through the Harness workspace opener and can open changed files and the current commit on GitHub when the remote is detected.
 - Stages and unstages individual files or all changes through fixed-argument local `git` commands.
 - Commits staged changes from the panel, including a `Cmd/Ctrl+Enter` shortcut and operation feedback.
 - Pushes, fetches, fast-forward pulls, and synchronizes through the repository's configured Git remotes and credential helpers.

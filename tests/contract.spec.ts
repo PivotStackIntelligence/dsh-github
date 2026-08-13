@@ -25,7 +25,7 @@ describe('dsh-github wire contract', () => {
     expect(branchNameSchema.parse('feature/source-control')).toBe('feature/source-control')
     expect(() => branchNameSchema.parse('   ')).toThrow()
     expect(() => commitMessageSchema.parse('   ')).toThrow()
-    expect(statusResultSchema.parse({ root: '/tmp/repo', branch: 'main', upstream: null, remoteName: null, ahead: 0, behind: 0, remoteUrl: null, githubUrl: null, files: [], truncated: false }).files).toEqual([])
+    expect(statusResultSchema.parse({ root: '/tmp/repo', branch: 'main', upstream: null, remoteName: null, ahead: 0, behind: 0, remoteUrl: null, headSha: 'abc123', commitUrl: null, githubUrl: null, files: [], truncated: false }).files).toEqual([])
     expect(diffResultSchema.parse({ path: 'src/index.ts', diff: '', truncated: false }).path).toBe('src/index.ts')
     expect(overviewResultSchema.parse({ branches: [{ name: 'main', current: true, remote: false, upstream: null, branchUrl: 'https://github.com/owner/repo/tree/main' }], remoteName: null, githubUrl: 'https://github.com/owner/repo', compareUrl: null }).branches[0]?.branchUrl).toBe('https://github.com/owner/repo/tree/main')
   })

@@ -48,7 +48,7 @@ function kindOf(index: string, worktree: string): GitFileChange['kind'] {
   return 'modified'
 }
 
-function parseStatus(output: string, maxFiles: number): { files: GitFileChange[]; truncated: boolean } {
+function parseStatus(output: string, maxFiles: number, fileUrlFor: (path: string) => string | null): { files: GitFileChange[]; truncated: boolean } {
   const records = output.split('\0').filter(Boolean)
   const files: GitFileChange[] = []
   for (let i = 0; i < records.length; i++) {
@@ -57,8 +57,9 @@ function parseStatus(output: string, maxFiles: number): { files: GitFileChange[]
     const index = record[0]!
     const worktree = record[1]!
     const path = record.slice(3)
-    if (index === 'R' || index === 'C') i++
-    files.push({ path, index, worktree, kind: kindOf(index, worktree) })
+    const renameOrCopy = index === 'R' || index === 'C'
+    const previousPath = renameOrCopy ? records[++i] : undefined
+    files.push({ path, index, worktree, kind: kindOf(index, worktree), ...(previousPath === undefined ? {} : { previousPath }), fileUrl: fileUrlFor(path) })
     if (files.length >= maxFiles) return { files, truncated: i < records.length - 1 }
   }
   return { files, truncated: false }
@@ -128,6 +129,14 @@ function parseBranches(output: string, remoteName: string | null): GitBranch[] {
   }).filter(branch => branch.name !== 'HEAD')
 }
 
+function fileUrl(repositoryUrl: string | null, branch: string, path: string): string | null {
+  return repositoryUrl === null || branch.startsWith('HEAD ') ? null : `${repositoryUrl}/blob/${branch.split('/').map(encodeURIComponent).join('/')}/${path.split('/').map(encodeURIComponent).join('/')}`
+}
+
+function commitUrl(repositoryUrl: string | null, sha: string): string | null {
+  return repositoryUrl === null ? null : `${repositoryUrl}/commit/${encodeURIComponent(sha)}`
+}
+
 function branchUrl(repositoryUrl: string | null, branch: string): string | null {
   return repositoryUrl === null ? null : `${repositoryUrl}/tree/${branch.split('/').map(encodeURIComponent).join('/')}`
 }
@@ -179,8 +188,11 @@ export class GithubRuntime extends TypertRemoteService {
       ahead = Number.parseInt(aheadText ?? '0', 10) || 0
     }
     const remote = await this.remoteForBranch(root, branch, upstream, signal)
-    const parsed = parseStatus(await git(['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 4 * 1024) }), this.config.maxFiles)
-    return { root, branch, upstream, ahead, behind, remoteName: remote?.name ?? null, remoteUrl: remoteForDisplay(remote?.url ?? null), githubUrl: githubUrl(remote?.url ?? null), ...parsed }
+    const displayedRemote = remoteForDisplay(remote?.url ?? null)
+    const repositoryUrl = githubUrl(remote?.url ?? null)
+    const headSha = (await git(['rev-parse', 'HEAD'], { cwd: root, signal })).trim()
+    const parsed = parseStatus(await git(['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 4 * 1024) }), this.config.maxFiles, changedPath => fileUrl(repositoryUrl, branch, changedPath))
+    return { root, branch, upstream, ahead, behind, remoteName: remote?.name ?? null, remoteUrl: displayedRemote, githubUrl: repositoryUrl, headSha, commitUrl: commitUrl(repositoryUrl, headSha), ...parsed }
   }
 
   /** Read one repository-relative file's bounded unified diff. */
@@ -188,7 +200,7 @@ export class GithubRuntime extends TypertRemoteService {
   async getDiff(path: string, filePath: string, mode: GitDiffMode, signal?: AbortSignal): Promise<GitDiff> {
     const root = await this.root(path, signal)
     const safePath = validateFilePath(root, filePath)
-    const status = parseStatus(await git(['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 4 * 1024) }), this.config.maxFiles * 4).files.find(file => file.path === safePath)
+    const status = parseStatus(await git(['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 4 * 1024) }), this.config.maxFiles * 4, () => null).files.find(file => file.path === safePath)
     let diff: string
     let truncated = false
     if (mode === 'working' && status?.kind === 'untracked') {
