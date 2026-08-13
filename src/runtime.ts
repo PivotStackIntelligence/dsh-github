@@ -179,7 +179,7 @@ export class GithubRuntime extends TypertRemoteService {
       ahead = Number.parseInt(aheadText ?? '0', 10) || 0
     }
     const remote = await this.remoteForBranch(root, branch, upstream, signal)
-    const parsed = parseStatus(await git(['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 1024) }), this.config.maxFiles)
+    const parsed = parseStatus(await git(['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 4 * 1024) }), this.config.maxFiles)
     return { root, branch, upstream, ahead, behind, remoteName: remote?.name ?? null, remoteUrl: remoteForDisplay(remote?.url ?? null), githubUrl: githubUrl(remote?.url ?? null), ...parsed }
   }
 
