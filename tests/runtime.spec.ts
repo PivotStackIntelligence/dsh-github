@@ -115,6 +115,19 @@ describe('GithubRuntime', () => {
     } finally { await rm(path, { recursive: true, force: true }) }
   })
 
+  it('does not guess between multiple unconfigured remotes', async () => {
+    const path = await tempRepo()
+    try {
+      await git(path, 'remote', 'add', 'origin', 'git@github.com:owner/fork.git')
+      await git(path, 'remote', 'add', 'upstream', 'git@github.com:owner/upstream.git')
+      const runtime = new GithubRuntime(new Context(), config)
+      await expect(runtime.getStatus(path)).resolves.toMatchObject({
+        remoteName: null, remoteUrl: null, pushRemoteName: null, pushRemoteUrl: null, githubUrl: null,
+      })
+      await expect(runtime.push(path)).rejects.toThrow('a push remote is not configured')
+    } finally { await rm(path, { recursive: true, force: true }) }
+  })
+
   it('uses the current branch remote instead of assuming origin', async () => {
     const path = await tempRepo()
     try {
@@ -167,6 +180,19 @@ describe('GithubRuntime', () => {
     } finally { await rm(path, { recursive: true, force: true }) }
   })
 
+  it('unstages an unborn repository without masking Git errors', async () => {
+    const path = await mkdtemp('/tmp/dsh-github-unborn-')
+    try {
+      await execFileAsync('git', ['init', path])
+      await writeFile(`${path}/new.txt`, 'new\n')
+      const runtime = new GithubRuntime(new Context(), config)
+      await runtime.stage(path, 'new.txt')
+      await expect(runtime.unstage(path, 'new.txt')).resolves.toMatchObject({
+        files: [expect.objectContaining({ path: 'new.txt', kind: 'untracked' })],
+      })
+    } finally { await rm(path, { recursive: true, force: true }) }
+  })
+
   it('marks unmerged paths as conflicts', async () => {
     const path = await tempRepo()
     try {
@@ -179,7 +205,12 @@ describe('GithubRuntime', () => {
       await git(path, 'add', 'README.md')
       await git(path, 'commit', '-m', 'main change')
       await expect(git(path, 'merge', 'conflict')).rejects.toThrow()
-      await expect(new GithubRuntime(new Context(), config).getStatus(path)).resolves.toMatchObject({ files: [expect.objectContaining({ path: 'README.md', kind: 'conflict' })] })
+      const runtime = new GithubRuntime(new Context(), config)
+      await expect(runtime.getStatus(path)).resolves.toMatchObject({ files: [expect.objectContaining({ path: 'README.md', kind: 'conflict' })] })
+      await writeFile(`${path}/README.md`, 'resolved\n')
+      await expect(runtime.stage(path, 'README.md')).resolves.toMatchObject({
+        files: [expect.objectContaining({ path: 'README.md', index: 'M', worktree: ' ', kind: 'modified' })],
+      })
     } finally { await rm(path, { recursive: true, force: true }) }
   })
 

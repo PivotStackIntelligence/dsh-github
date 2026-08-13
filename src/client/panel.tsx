@@ -216,13 +216,13 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
       <span className={`kind kind-${file.kind}`}>{badge(file)}</span><span className="dsh-github-change-path" title={file.previousPath ? `${file.previousPath} → ${file.path}` : file.path}><span>{file.path}</span>{file.previousPath ? <small>{file.previousPath} ←</small> : null}</span>
     </button>
     <button type="button" className="dsh-github-change-open" disabled={file.kind === 'deleted'} aria-label={`${t('panel.openFile')}: ${file.path}`} title={t('panel.openFile')} onClick={() => { void actions.openFile(status?.root ?? path, file.path).catch(reason => setError(errorMessage(reason))) }}>⌕</button>{file.fileUrl ? <button type="button" className="dsh-github-change-open" aria-label={`${t('panel.openFileOnGithub')}: ${file.path}`} title={t('panel.openFileOnGithub')} onClick={() => openUrl(file.fileUrl!)}>↗</button> : null}
-    {file.kind !== 'conflict' ? <button type="button" className="dsh-github-change-action" disabled={operation !== null} aria-label={mode === 'staged' ? t('panel.unstage') : t('panel.stage')} title={mode === 'staged' ? t('panel.unstage') : t('panel.stage')} onClick={() => runStatusAction(mode === 'staged' ? 'unstage' : 'stage', () => mode === 'staged' ? actions.unstage(path, file.path) : actions.stage(path, file.path))}>{mode === 'staged' ? '−' : '+'}</button> : null}
+    <button type="button" className="dsh-github-change-action" disabled={operation !== null} aria-label={file.kind === 'conflict' ? t('panel.stageResolved') : mode === 'staged' ? t('panel.unstage') : t('panel.stage')} title={file.kind === 'conflict' ? t('panel.stageResolved') : mode === 'staged' ? t('panel.unstage') : t('panel.stage')} onClick={() => runStatusAction(mode === 'staged' ? 'unstage' : 'stage', () => mode === 'staged' ? actions.unstage(path, file.path) : actions.stage(path, file.path))}>{mode === 'staged' ? '−' : '+'}</button>
   </div>
 
-  const group = (mode: GitDiffMode, files: GitFileChange[], title: DshGithubKey, expanded: boolean, setExpanded: (value: boolean) => void) => <section className="dsh-github-change-group">
+  const group = (mode: GitDiffMode, files: GitFileChange[], title: DshGithubKey, expanded: boolean, setExpanded: (value: boolean) => void, showAction = true) => <section className="dsh-github-change-group">
     <div className="dsh-github-change-group-header">
       <button type="button" className="dsh-github-group-toggle" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}><span>{expanded ? '⌄' : '›'}</span>{t(title)} <b>{files.length}</b></button>
-      {files.length > 0 ? <button type="button" className="dsh-github-group-action" disabled={operation !== null} onClick={() => runStatusAction(mode === 'staged' ? 'unstageAll' : 'stageAll', () => mode === 'staged' ? actions.unstageAll(path) : actions.stageAll(path))}>{mode === 'staged' ? t('panel.unstageAll') : t('panel.stageAll')}</button> : null}
+      {files.length > 0 && showAction ? <button type="button" className="dsh-github-group-action" disabled={operation !== null} onClick={() => runStatusAction(mode === 'staged' ? 'unstageAll' : 'stageAll', () => mode === 'staged' ? actions.unstageAll(path) : actions.stageAll(path))}>{mode === 'staged' ? t('panel.unstageAll') : t('panel.stageAll')}</button> : null}
     </div>
     {expanded ? files.map(file => changeRow(file, mode)) : null}
   </section>
@@ -265,7 +265,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
           </div>
           {group('staged', staged, 'panel.stagedChanges', stagedExpanded, setStagedExpanded)}
           {group('working', working, 'panel.changes', workingExpanded, setWorkingExpanded)}
-          {group('working', untracked, 'panel.untrackedChanges', untrackedExpanded, setUntrackedExpanded)}
+          {group('working', untracked, 'panel.untrackedChanges', untrackedExpanded, setUntrackedExpanded, working.length === 0)}
           {conflicts.length > 0 ? <section className="dsh-github-change-group dsh-github-conflict-group">
             <div className="dsh-github-change-group-header">
               <button type="button" className="dsh-github-group-toggle" aria-expanded={conflictsExpanded} onClick={() => setConflictsExpanded(!conflictsExpanded)}><span>{conflictsExpanded ? '⌄' : '›'}</span>{t('panel.mergeChanges')} <b>{conflicts.length}</b></button>

@@ -36,8 +36,8 @@ export interface GitStatus {
   pushRemoteName: string | null
   /** Push URL selected by local Git configuration, with credentials removed. */
   pushRemoteUrl: string | null
-  /** Full local HEAD commit SHA. */
-  headSha: string
+  /** Full local HEAD commit SHA, or null before the first commit. */
+  headSha: string | null
   /** Browser URL for the local HEAD commit, when GitHub is detected. */
   commitUrl: string | null
   /** Changed files, capped by configuration. */

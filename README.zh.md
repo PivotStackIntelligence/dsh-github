@@ -6,9 +6,9 @@
 
 - 展示当前 Workspace 的分支、上游分支、ahead/behind 数量和改动文件。
 - 分组展示已暂存、工作区、未跟踪和合并冲突改动，并预览受限大小的文件 diff。
-- 通过固定参数的本机 `git` 命令暂存和取消暂存单个文件或全部改动。
+- 通过固定参数的本机 `git` 命令暂存和取消暂存单个文件或全部改动，并可暂存已经解决的合并冲突。
 - 在面板中填写 commit message 并提交已暂存改动，支持 `Cmd/Ctrl+Enter` 和操作状态反馈；提交后推送失败时会明确提示提交已经创建。
-- 通过仓库现有的 Git remote 与 credential helper 执行 Push、Fetch、仅 fast-forward 的 Pull 和同步。
+- 通过仓库现有的 Git remote 与 credential helper 执行 Push、Fetch、仅 fast-forward 的 Pull 和同步；存在多个 remote 时，必须由 Git 配置明确分支 remote 或 push remote，不会猜测目标。
 - 查看本地分支与当前分支远程的远程跟踪分支，在面板中切换分支并创建新的本地分支。
 - 根据当前分支使用的 Git remote 生成 GitHub 仓库、分支和 compare 链接，并在浏览器打开这些页面。
 

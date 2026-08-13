@@ -21,7 +21,7 @@ const fileChangeSchema = z.object({
 /** Wire codec for the repository status projection. */
 export const statusResultSchema = z.object({
   root: z.string(), branch: z.string(), upstream: z.string().nullable(), remoteName: z.string().nullable(),
-  ahead: z.number(), behind: z.number(), remoteUrl: z.string().nullable(), headSha: z.string(), commitUrl: z.string().nullable(),
+  ahead: z.number(), behind: z.number(), remoteUrl: z.string().nullable(), headSha: z.string().nullable(), commitUrl: z.string().nullable(),
   githubUrl: z.string().nullable(), pushRemoteName: z.string().nullable(), pushRemoteUrl: z.string().nullable(), files: z.array(fileChangeSchema), truncated: z.boolean(),
 }).readonly()
 

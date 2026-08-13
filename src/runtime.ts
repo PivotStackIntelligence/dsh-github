@@ -139,14 +139,14 @@ function parseBranches(output: string, remoteName: string | null): GitBranch[] {
   }).filter(branch => branch.name !== 'HEAD')
 }
 
-function fileUrl(repositoryUrl: string | null, headSha: string, file: GitFileChange): string | null {
-  if (repositoryUrl === null || file.kind === 'untracked' || file.kind === 'added') return null
+function fileUrl(repositoryUrl: string | null, headSha: string | null, file: GitFileChange): string | null {
+  if (repositoryUrl === null || headSha === null || file.kind === 'untracked' || file.kind === 'added') return null
   const path = file.kind === 'renamed' || file.kind === 'copied' ? file.previousPath : file.path
   return path === null ? null : `${repositoryUrl}/blob/${encodeURIComponent(headSha)}/${path.split('/').map(encodeURIComponent).join('/')}`
 }
 
-function commitUrl(repositoryUrl: string | null, sha: string): string | null {
-  return repositoryUrl === null ? null : `${repositoryUrl}/commit/${encodeURIComponent(sha)}`
+function commitUrl(repositoryUrl: string | null, sha: string | null): string | null {
+  return repositoryUrl === null || sha === null ? null : `${repositoryUrl}/commit/${encodeURIComponent(sha)}`
 }
 
 function branchUrl(repositoryUrl: string | null, branch: string): string | null {
@@ -183,12 +183,13 @@ export class GithubRuntime extends TypertRemoteService {
   } | null> {
     const detached = branch.startsWith('HEAD ')
     const configured = detached ? '' : await git(['config', '--get', `branch.${branch}.remote`], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
-    const upstreamRemote = detached ? '' : upstream?.split('/', 1)[0] ?? ''
+    const upstreamRemote = detached || configured === '.' ? '' : upstream?.split('/', 1)[0] ?? ''
     const branchPush = detached ? '' : await git(['config', '--get', `branch.${branch}.pushRemote`], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
     const pushDefault = await git(['config', '--get', 'remote.pushDefault'], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
     const remotes = (await git(['remote'], { cwd: root, signal }).catch(() => '')).split(/\s+/).filter(Boolean)
-    const fetchName = configured && configured !== '.' ? configured : upstreamRemote || remotes[0] || ''
-    const pushName = branchPush || pushDefault || (configured !== '.' ? configured : '') || upstreamRemote || remotes[0] || ''
+    const soleRemote = remotes.length === 1 ? remotes[0]! : ''
+    const fetchName = configured && configured !== '.' ? configured : upstreamRemote || soleRemote
+    const pushName = branchPush || pushDefault || (configured !== '.' ? configured : '') || upstreamRemote || soleRemote
     if (!fetchName && !pushName) return null
     const fetchUrl = fetchName === '' ? '' : await git(['remote', 'get-url', fetchName], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
     const pushUrl = pushName === '' ? '' : await git(['remote', 'get-url', '--push', pushName], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
@@ -215,7 +216,7 @@ export class GithubRuntime extends TypertRemoteService {
     const remote = await this.remoteForBranch(root, branch, upstream, signal)
     const displayedRemote = remoteForDisplay(remote?.fetch?.url ?? null)
     const repositoryUrl = githubUrl(remote?.fetch?.url ?? remote?.push?.url ?? null)
-    const headSha = (await git(['rev-parse', 'HEAD'], { cwd: root, signal })).trim()
+    const headSha = await git(['rev-parse', '--verify', 'HEAD'], { cwd: root, signal }).then(value => value.trim()).catch(() => null)
     const parsed = parseStatus(await git(['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 4 * 1024) }), this.config.maxFiles, file => fileUrl(repositoryUrl, headSha, file))
     return { root, branch, upstream, ahead, behind, remoteName: remote?.fetch?.name ?? null, remoteUrl: displayedRemote, githubUrl: repositoryUrl, pushRemoteName: remote?.push?.name ?? null, pushRemoteUrl: remoteForDisplay(remote?.push?.url ?? null), headSha, commitUrl: commitUrl(repositoryUrl, headSha), ...parsed }
   }
@@ -254,7 +255,8 @@ export class GithubRuntime extends TypertRemoteService {
   async unstage(path: string, filePath: string, signal?: AbortSignal): Promise<GitStatus> {
     const root = await this.root(path, signal)
     const safePath = validateFilePath(root, filePath)
-    await gitWrite(['restore', '--staged', '--', safePath], { cwd: root, signal }).catch(async () => gitWrite(['rm', '--cached', '--', safePath], { cwd: root, signal }))
+    const hasHead = await git(['rev-parse', '--verify', 'HEAD'], { cwd: root, signal }).then(() => true).catch(() => false)
+    await gitWrite(hasHead ? ['restore', '--staged', '--', safePath] : ['rm', '--cached', '--', safePath], { cwd: root, signal })
     return this.getStatus(root, signal)
   }
 
@@ -270,7 +272,8 @@ export class GithubRuntime extends TypertRemoteService {
   @Remote
   async unstageAll(path: string, signal?: AbortSignal): Promise<GitStatus> {
     const root = await this.root(path, signal)
-    await gitWrite(['restore', '--staged', '--', '.'], { cwd: root, signal }).catch(async () => gitWrite(['rm', '--cached', '-r', '--', '.'], { cwd: root, signal }))
+    const hasHead = await git(['rev-parse', '--verify', 'HEAD'], { cwd: root, signal }).then(() => true).catch(() => false)
+    await gitWrite(hasHead ? ['restore', '--staged', '--', '.'] : ['rm', '--cached', '-r', '--', '.'], { cwd: root, signal })
     return this.getStatus(root, signal)
   }
 
