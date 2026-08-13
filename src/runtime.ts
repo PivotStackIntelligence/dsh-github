@@ -150,7 +150,11 @@ function commitUrl(repositoryUrl: string | null, sha: string): string | null {
 }
 
 function branchUrl(repositoryUrl: string | null, branch: string): string | null {
-  return repositoryUrl === null ? null : `${repositoryUrl}/tree/${branch.split('/').map(encodeURIComponent).join('/')}`
+  if (repositoryUrl === null) return null
+  const pull = branch.match(/^(?:pull|pr)\/(\d+)\/(?:head|merge)$/i)
+  return pull === null
+    ? `${repositoryUrl}/tree/${branch.split('/').map(encodeURIComponent).join('/')}`
+    : `${repositoryUrl}/pull/${pull[1]}`
 }
 
 function compareUrl(repositoryUrl: string | null, branch: string, upstream: string | null, defaultBranch: string | null): string | null {
@@ -177,10 +181,10 @@ export class GithubRuntime extends TypertRemoteService {
     fetch: { name: string; url: string } | null
     push: { name: string; url: string } | null
   } | null> {
-    if (branch.startsWith('HEAD ')) return null
-    const configured = await git(['config', '--get', `branch.${branch}.remote`], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
-    const upstreamRemote = upstream?.split('/', 1)[0] ?? ''
-    const branchPush = await git(['config', '--get', `branch.${branch}.pushRemote`], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
+    const detached = branch.startsWith('HEAD ')
+    const configured = detached ? '' : await git(['config', '--get', `branch.${branch}.remote`], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
+    const upstreamRemote = detached ? '' : upstream?.split('/', 1)[0] ?? ''
+    const branchPush = detached ? '' : await git(['config', '--get', `branch.${branch}.pushRemote`], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
     const pushDefault = await git(['config', '--get', 'remote.pushDefault'], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
     const remotes = (await git(['remote'], { cwd: root, signal }).catch(() => '')).split(/\s+/).filter(Boolean)
     const fetchName = configured && configured !== '.' ? configured : upstreamRemote || remotes[0] || ''

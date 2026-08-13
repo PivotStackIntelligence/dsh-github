@@ -75,6 +75,17 @@ describe('GithubRuntime', () => {
     } finally { await rm(path, { recursive: true, force: true }) }
   })
 
+  it('links fetched pull request refs to the GitHub pull request page', async () => {
+    const path = await tempRepo()
+    try {
+      await git(path, 'remote', 'add', 'origin', 'git@github.com:owner/repo.git')
+      await git(path, 'update-ref', 'refs/remotes/origin/pr/42/head', 'HEAD')
+      await expect(new GithubRuntime(new Context(), config).getRepositoryOverview(path)).resolves.toMatchObject({
+        branches: expect.arrayContaining([expect.objectContaining({ name: 'pr/42/head', remote: true, branchUrl: 'https://github.com/owner/repo/pull/42' })]),
+      })
+    } finally { await rm(path, { recursive: true, force: true }) }
+  })
+
   it('parses credentialed HTTPS and port-qualified SSH GitHub remotes', async () => {
     const path = await tempRepo()
     try {

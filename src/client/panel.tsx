@@ -193,8 +193,8 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   const untracked = workingFiles.filter(file => file.kind === 'untracked')
   const working = workingFiles.filter(file => file.kind !== 'untracked')
   const canCommit = operation === null && message.trim() !== '' && staged.length > 0
-  const canFetch = operation === null && status !== null && status.remoteName !== null && !status.branch.startsWith('HEAD ')
-  const canPush = operation === null && status !== null && status.pushRemoteName !== null && !status.branch.startsWith('HEAD ')
+  const canFetch = operation === null && status !== null && conflicts.length === 0 && status.remoteName !== null && !status.branch.startsWith('HEAD ')
+  const canPush = operation === null && status !== null && conflicts.length === 0 && status.pushRemoteName !== null && !status.branch.startsWith('HEAD ')
   const primaryOperation: 'fetch' | 'sync' | null = status?.upstream === null ? 'sync' : status?.ahead !== 0 || status?.behind !== 0 ? 'sync' : 'fetch'
   const openUrl = (url: string): void => { window.open(url, '_blank', 'noopener,noreferrer') }
   const commit = (): void => { if (canCommit) runStatusAction('commit', () => actions.commit(path, message.trim()), true) }
