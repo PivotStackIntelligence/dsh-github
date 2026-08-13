@@ -26,7 +26,7 @@
 ```sh
 pnpm install
 pnpm run build
-dsh plugins install .
+dsh plugin --profile web add .
 ```
 
 重新构建插件后需要重启 Web Harness。在 Workspace 的更多菜单中选择 **查看 Source Control**。

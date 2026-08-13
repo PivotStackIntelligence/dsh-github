@@ -27,7 +27,7 @@ The plugin uses the repository's normal local Git configuration, SSH keys, HTTPS
 ```sh
 pnpm install
 pnpm run build
-dsh plugins install .
+dsh plugin --profile web add .
 ```
 
 Restart the Web Harness after rebuilding the plugin. Open a workspace's overflow menu and choose **View Source Control**.
