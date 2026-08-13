@@ -107,8 +107,12 @@ function syntheticUntrackedDiff(filePath: string, text: string): string {
 function parseBranches(output: string): GitBranch[] {
   return output.split('\0').map(record => record.trimStart()).filter(Boolean).map(record => {
     const [ref = '', short = '', upstream = '', head = ''] = record.split('\t')
-    return { name: short.replace(/^origin\//, ''), current: head === '*', remote: ref.startsWith('refs/remotes/'), upstream: upstream || null }
+    return { name: short.replace(/^origin\//, ''), current: head === '*', remote: ref.startsWith('refs/remotes/'), upstream: upstream || null, branchUrl: null }
   }).filter(branch => branch.name !== 'HEAD')
+}
+
+function branchUrl(repositoryUrl: string | null, branch: string): string | null {
+  return repositoryUrl === null ? null : `${repositoryUrl}/tree/${encodeURIComponent(branch)}`
 }
 
 function compareUrl(repositoryUrl: string | null, branch: string, upstream: string | null, defaultBranch: string | null): string | null {
@@ -281,7 +285,8 @@ export class GithubRuntime extends TypertRemoteService {
     const repositoryUrl = githubUrl(remote)
     const current = branches.find(branch => branch.current && !branch.remote)
     const defaultBranch = await git(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], { cwd: root, signal }).then(value => value.trim().replace(/^origin\//, '')).catch(() => null)
-    return { branches, githubUrl: repositoryUrl, compareUrl: current === undefined ? null : compareUrl(repositoryUrl, current.name, current.upstream, defaultBranch) }
+    const linkedBranches = branches.map(branch => ({ ...branch, branchUrl: branchUrl(repositoryUrl, branch.name) }))
+    return { branches: linkedBranches, githubUrl: repositoryUrl, compareUrl: current === undefined ? null : compareUrl(repositoryUrl, current.name, current.upstream, defaultBranch) }
   }
 
 }

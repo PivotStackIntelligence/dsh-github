@@ -157,6 +157,10 @@ describe('GithubRuntime', () => {
       await expect(new GithubRuntime(new Context(), config).getRepositoryOverview(path)).resolves.toMatchObject({
         githubUrl: 'https://github.com/owner/repo',
         compareUrl: 'https://github.com/owner/repo/compare/main...feature%2Fsource-control?expand=1',
+        branches: expect.arrayContaining([
+          expect.objectContaining({ name: 'feature/source-control', branchUrl: 'https://github.com/owner/repo/tree/feature%2Fsource-control' }),
+          expect.objectContaining({ name: 'main', branchUrl: 'https://github.com/owner/repo/tree/main' }),
+        ]),
       })
     } finally { await rm(path, { recursive: true, force: true }) }
   })

@@ -28,7 +28,7 @@ export const statusResultSchema = z.object({
 export const diffResultSchema = z.object({ path: z.string(), diff: z.string(), truncated: z.boolean() }).readonly()
 
 const branchSchema = z.object({
-  name: z.string(), current: z.boolean(), remote: z.boolean(), upstream: z.string().nullable(),
+  name: z.string(), current: z.boolean(), remote: z.boolean(), upstream: z.string().nullable(), branchUrl: z.string().nullable(),
 }).readonly()
 
 /** Wire codec for the repository branch and browser-link projection. */

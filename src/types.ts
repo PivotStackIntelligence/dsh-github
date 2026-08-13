@@ -55,6 +55,8 @@ export interface GitBranch {
   remote: boolean
   /** Configured upstream branch, when present. */
   upstream: string | null
+  /** Browser URL for this branch when the origin is a GitHub repository. */
+  branchUrl: string | null
 }
 
 /** Branch and browser links for the active repository. */
