@@ -157,14 +157,17 @@ function branchUrl(repositoryUrl: string | null, branch: string): string | null 
     : `${repositoryUrl}/pull/${pull[1]}`
 }
 
-function compareUrl(repositoryUrl: string | null, branch: string, upstream: string | null, defaultBranch: string | null): string | null {
+function compareUrl(repositoryUrl: string | null, branch: string, upstream: string | null, defaultBranch: string | null, pushRepositoryUrl: string | null): string | null {
   if (repositoryUrl === null || branch.startsWith('HEAD ')) return null
   const slash = upstream?.indexOf('/') ?? -1
-  const base = upstream === null ? defaultBranch : slash < 0 ? upstream : upstream.slice(slash + 1)
+  const upstreamBranch = upstream === null ? null : slash < 0 ? upstream : upstream.slice(slash + 1)
+  const base = defaultBranch ?? (upstreamBranch === branch ? null : upstreamBranch)
   if (base === null || base === branch) return null
   const encodedBase = base.split('/').map(encodeURIComponent).join('/')
   const encodedBranch = branch.split('/').map(encodeURIComponent).join('/')
-  return `${repositoryUrl}/compare/${encodedBase}...${encodedBranch}?expand=1`
+  if (pushRepositoryUrl === null || pushRepositoryUrl === repositoryUrl) return `${repositoryUrl}/compare/${encodedBase}...${encodedBranch}?expand=1`
+  const owner = new URL(pushRepositoryUrl).pathname.split('/').filter(Boolean)[0]
+  return owner === undefined ? null : `${repositoryUrl}/compare/${encodedBase}...${owner}:${encodedBranch}?expand=1`
 }
 
 /** Host-side Remote service for local Git state and GitHub browser links. */
@@ -368,9 +371,14 @@ export class GithubRuntime extends TypertRemoteService {
     const branches = parseBranches(await git(['for-each-ref', '--format=%(refname)%09%(refname:short)%09%(upstream:short)%09%(HEAD)%00', ...refs], { cwd: root, signal }), remoteName)
     const repositoryUrl = status.githubUrl
     const current = branches.find(branch => branch.current && !branch.remote)
-    const defaultBranch = remoteName === null ? null : await git(['symbolic-ref', '--short', `refs/remotes/${remoteName}/HEAD`], { cwd: root, signal }).then(value => value.trim().replace(new RegExp(`^${remoteName}/`), '')).catch(() => null)
-    const linkedBranches = branches.map(branch => ({ ...branch, branchUrl: branchUrl(repositoryUrl, branch.name) }))
-    return { branches: linkedBranches, remoteName, githubUrl: repositoryUrl, compareUrl: current === undefined ? null : compareUrl(repositoryUrl, current.name, current.upstream, defaultBranch) }
+    const defaultBranch = remoteName === null ? null : await git(['symbolic-ref', '--short', `refs/remotes/${remoteName}/HEAD`], { cwd: root, signal }).then(value => value.trim().replace(new RegExp(`^${remoteName}/`), '')).catch(() => {
+      const remoteBranches = new Set(branches.filter(branch => branch.remote).map(branch => branch.name))
+      return remoteBranches.has('main') ? 'main' : remoteBranches.has('master') ? 'master' : null
+    })
+    const localBranches = new Set(branches.filter(branch => !branch.remote).map(branch => branch.name))
+    const linkedBranches = branches.filter(branch => !branch.remote || !localBranches.has(branch.name)).map(branch => ({ ...branch, branchUrl: branchUrl(repositoryUrl, branch.name) }))
+    const pushRepositoryUrl = githubUrl(status.pushRemoteUrl)
+    return { branches: linkedBranches, remoteName, githubUrl: repositoryUrl, compareUrl: current === undefined ? null : compareUrl(repositoryUrl, current.name, current.upstream, defaultBranch, pushRepositoryUrl) }
   }
 
 }

@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { GithubChangesPanel, type GithubPanelActions } from '../src/client/panel.tsx'
 import { en, fmt, type DshGithubKey } from '../src/client/locales.ts'
-import type { GitStatus } from '../src/types.ts'
+import type { GitRepositoryOverview, GitStatus } from '../src/types.ts'
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
 
@@ -45,4 +45,36 @@ describe('GithubChangesPanel', () => {
 
     await act(async () => root.unmount())
   })
+
+  it('shows fetched pull-request refs as browser links instead of checkout actions', async () => {
+    const overview: GitRepositoryOverview = {
+      remoteName: 'origin', githubUrl: 'https://github.com/owner/repo', compareUrl: 'https://github.com/owner/repo/compare/main...feature?expand=1',
+      branches: [
+        { name: 'main', current: true, remote: false, upstream: 'origin/main', branchUrl: 'https://github.com/owner/repo/tree/main' },
+        { name: 'feature', current: false, remote: true, upstream: null, branchUrl: 'https://github.com/owner/repo/tree/feature' },
+        { name: 'pr/42/head', current: false, remote: true, upstream: null, branchUrl: 'https://github.com/owner/repo/pull/42' },
+      ],
+    }
+    vi.mocked(actions.getRepositoryOverview).mockImplementation(() => ok(overview))
+    const mount = document.createElement('div')
+    document.body.appendChild(mount)
+    const root = createRoot(mount)
+    await act(async () => {
+      root.render(<GithubChangesPanel path="/repo" title="repo" actions={actions} t={t} onClose={vi.fn()} />)
+      await Promise.resolve()
+    })
+    await act(async () => {
+      ;([...mount.querySelectorAll('button')].find(button => button.textContent === 'Repository') as HTMLButtonElement).click()
+      await Promise.resolve()
+    })
+
+    expect(mount.textContent).toContain('Pull request branches')
+    expect(mount.textContent).toContain('Pull Request #42')
+    expect(mount.querySelector('a[href="https://github.com/owner/repo/pull/42"]')).not.toBeNull()
+    expect([...mount.querySelectorAll('button')].some(button => button.textContent?.includes('Pull Request #42'))).toBe(false)
+    expect(actions.checkoutBranch).not.toHaveBeenCalled()
+
+    await act(async () => root.unmount())
+  })
+
 })

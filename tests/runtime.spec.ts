@@ -232,8 +232,8 @@ describe('GithubRuntime', () => {
       expect(result.remoteName).toBe('origin')
       expect(result.upstream).toMatch(/^origin\/(master|main)$/)
       const overview = await runtime.getRepositoryOverview(path)
-      expect(overview.branches.some(branch => branch.current && !branch.remote)).toBe(true)
-      expect(overview.branches.some(branch => branch.remote)).toBe(true)
+      expect(overview.branches.filter(branch => branch.current && !branch.remote)).toHaveLength(1)
+      expect(overview.branches.filter(branch => branch.name === result.branch)).toHaveLength(1)
       expect((await readFile(`${remote}/HEAD`, 'utf8')).startsWith('ref:')).toBe(true)
     } finally {
       await rm(path, { recursive: true, force: true })
@@ -256,7 +256,7 @@ describe('GithubRuntime', () => {
   })
 
 
-  it('derives GitHub repository and compare links from local Git config', async () => {
+  it('creates a pull-request link for a published branch without duplicating its remote ref', async () => {
     const path = await tempRepo()
     try {
       await git(path, 'branch', '-M', 'main')
@@ -264,13 +264,36 @@ describe('GithubRuntime', () => {
       await git(path, 'update-ref', 'refs/remotes/origin/main', 'HEAD')
       await git(path, 'symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main')
       await git(path, 'switch', '-c', 'feature/source-control')
-      await expect(new GithubRuntime(new Context(), config).getRepositoryOverview(path)).resolves.toMatchObject({
+      await git(path, 'update-ref', 'refs/remotes/origin/feature/source-control', 'HEAD')
+      await git(path, 'config', 'branch.feature/source-control.remote', 'origin')
+      await git(path, 'config', 'branch.feature/source-control.merge', 'refs/heads/feature/source-control')
+      const overview = await new GithubRuntime(new Context(), config).getRepositoryOverview(path)
+      expect(overview).toMatchObject({
         githubUrl: 'https://github.com/owner/repo',
         compareUrl: 'https://github.com/owner/repo/compare/main...feature/source-control?expand=1',
         branches: expect.arrayContaining([
-          expect.objectContaining({ name: 'feature/source-control', branchUrl: 'https://github.com/owner/repo/tree/feature/source-control' }),
+          expect.objectContaining({ name: 'feature/source-control', remote: false, branchUrl: 'https://github.com/owner/repo/tree/feature/source-control' }),
           expect.objectContaining({ name: 'main', remote: false, branchUrl: 'https://github.com/owner/repo/tree/main' }),
         ]),
+      })
+      expect(overview.branches.filter(branch => branch.name === 'feature/source-control')).toHaveLength(1)
+    } finally { await rm(path, { recursive: true, force: true }) }
+  })
+
+  it('creates a fork pull-request link using configured fetch and push remotes', async () => {
+    const path = await tempRepo()
+    try {
+      await git(path, 'branch', '-M', 'main')
+      await git(path, 'remote', 'add', 'upstream', 'git@github.com:upstream-owner/repo.git')
+      await git(path, 'remote', 'add', 'fork', 'git@github.com:fork-owner/repo.git')
+      await git(path, 'update-ref', 'refs/remotes/upstream/main', 'HEAD')
+      await git(path, 'switch', '-c', 'feature/fork')
+      await git(path, 'config', 'branch.feature/fork.remote', 'upstream')
+      await git(path, 'config', 'branch.feature/fork.merge', 'refs/heads/feature/fork')
+      await git(path, 'config', 'branch.feature/fork.pushRemote', 'fork')
+      await expect(new GithubRuntime(new Context(), config).getRepositoryOverview(path)).resolves.toMatchObject({
+        githubUrl: 'https://github.com/upstream-owner/repo',
+        compareUrl: 'https://github.com/upstream-owner/repo/compare/main...fork-owner:feature/fork?expand=1',
       })
     } finally { await rm(path, { recursive: true, force: true }) }
   })
