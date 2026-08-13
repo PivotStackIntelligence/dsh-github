@@ -8,9 +8,9 @@ export interface GitFileChange {
   worktree: string
   /** Whether the path is untracked, added, deleted, renamed, copied, or modified. */
   kind: 'untracked' | 'added' | 'deleted' | 'renamed' | 'copied' | 'conflict' | 'modified'
-  /** Previous repository-relative path for a rename or copy status. */
-  previousPath?: string
-  /** Browser URL for this file at the current local HEAD, when GitHub is detected. */
+  /** Previous repository-relative path for a rename or copy status, or null for other statuses. */
+  previousPath: string | null
+  /** Browser URL for the committed HEAD version of this file, when GitHub is detected. */
   fileUrl: string | null
 }
 

@@ -48,7 +48,7 @@ function kindOf(index: string, worktree: string): GitFileChange['kind'] {
   return 'modified'
 }
 
-function parseStatus(output: string, maxFiles: number, fileUrlFor: (path: string) => string | null): { files: GitFileChange[]; truncated: boolean } {
+function parseStatus(output: string, maxFiles: number, fileUrlFor: (file: GitFileChange) => string | null): { files: GitFileChange[]; truncated: boolean } {
   const records = output.split('\0').filter(Boolean)
   const files: GitFileChange[] = []
   for (let i = 0; i < records.length; i++) {
@@ -59,7 +59,9 @@ function parseStatus(output: string, maxFiles: number, fileUrlFor: (path: string
     const path = record.slice(3)
     const renameOrCopy = index === 'R' || index === 'C'
     const previousPath = renameOrCopy ? records[++i] : undefined
-    files.push({ path, index, worktree, kind: kindOf(index, worktree), ...(previousPath === undefined ? {} : { previousPath }), fileUrl: fileUrlFor(path) })
+    const file: GitFileChange = { path, index, worktree, kind: kindOf(index, worktree), previousPath: previousPath ?? null, fileUrl: null }
+    file.fileUrl = fileUrlFor(file)
+    files.push(file)
     if (files.length >= maxFiles) return { files, truncated: i < records.length - 1 }
   }
   return { files, truncated: false }
@@ -129,8 +131,10 @@ function parseBranches(output: string, remoteName: string | null): GitBranch[] {
   }).filter(branch => branch.name !== 'HEAD')
 }
 
-function fileUrl(repositoryUrl: string | null, branch: string, path: string): string | null {
-  return repositoryUrl === null || branch.startsWith('HEAD ') ? null : `${repositoryUrl}/blob/${branch.split('/').map(encodeURIComponent).join('/')}/${path.split('/').map(encodeURIComponent).join('/')}`
+function fileUrl(repositoryUrl: string | null, headSha: string, file: GitFileChange): string | null {
+  if (repositoryUrl === null || file.kind === 'untracked' || file.kind === 'added') return null
+  const path = file.kind === 'renamed' || file.kind === 'copied' ? file.previousPath : file.path
+  return path === null ? null : `${repositoryUrl}/blob/${encodeURIComponent(headSha)}/${path.split('/').map(encodeURIComponent).join('/')}`
 }
 
 function commitUrl(repositoryUrl: string | null, sha: string): string | null {
@@ -191,7 +195,7 @@ export class GithubRuntime extends TypertRemoteService {
     const displayedRemote = remoteForDisplay(remote?.url ?? null)
     const repositoryUrl = githubUrl(remote?.url ?? null)
     const headSha = (await git(['rev-parse', 'HEAD'], { cwd: root, signal })).trim()
-    const parsed = parseStatus(await git(['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 4 * 1024) }), this.config.maxFiles, changedPath => fileUrl(repositoryUrl, branch, changedPath))
+    const parsed = parseStatus(await git(['status', '--porcelain=v1', '-z', '--untracked-files=all'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 4 * 1024) }), this.config.maxFiles, file => fileUrl(repositoryUrl, headSha, file))
     return { root, branch, upstream, ahead, behind, remoteName: remote?.name ?? null, remoteUrl: displayedRemote, githubUrl: repositoryUrl, headSha, commitUrl: commitUrl(repositoryUrl, headSha), ...parsed }
   }
 

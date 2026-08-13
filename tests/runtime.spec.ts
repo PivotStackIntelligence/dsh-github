@@ -42,10 +42,15 @@ describe('GithubRuntime', () => {
       await writeFile(`${path}/new.txt`, 'new line\n')
       await git(path, 'remote', 'add', 'origin', 'git@github.com:owner/repo.git')
       const runtime = new GithubRuntime(new Context(), config)
-      await expect(runtime.getStatus(path)).resolves.toMatchObject({
+      const status = await runtime.getStatus(path)
+      expect(status).toMatchObject({
         remoteName: 'origin', remoteUrl: 'git@github.com:owner/repo.git', githubUrl: 'https://github.com/owner/repo',
-        headSha: expect.stringMatching(/^[0-9a-f]{40}$/), commitUrl: expect.stringMatching(/^https:\/\/github\.com\/owner\/repo\/commit\/[0-9a-f]{40}$/), files: [{ path: 'README.md', index: ' ', worktree: 'M', fileUrl: 'https://github.com/owner/repo/blob/main/README.md' }, { path: 'new.txt', kind: 'untracked', fileUrl: 'https://github.com/owner/repo/blob/main/new.txt' }],
+        headSha: expect.stringMatching(/^[0-9a-f]{40}$/), commitUrl: expect.stringMatching(/^https:\/\/github\.com\/owner\/repo\/commit\/[0-9a-f]{40}$/),
       })
+      expect(status.files).toEqual([
+        { path: 'README.md', index: ' ', worktree: 'M', kind: 'modified', previousPath: null, fileUrl: `https://github.com/owner/repo/blob/${status.headSha}/README.md` },
+        { path: 'new.txt', index: '?', worktree: '?', kind: 'untracked', previousPath: null, fileUrl: null },
+      ])
       await expect(runtime.getDiff(path, 'README.md', 'working')).resolves.toMatchObject({ diff: expect.stringContaining('-initial\n+changed') })
       await expect(runtime.getDiff(path, 'new.txt', 'working')).resolves.toMatchObject({ diff: expect.stringContaining('+new line') })
       await git(path, 'checkout', '--', 'README.md')
