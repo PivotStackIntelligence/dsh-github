@@ -120,7 +120,8 @@ function branchUrl(repositoryUrl: string | null, branch: string): string | null 
 
 function compareUrl(repositoryUrl: string | null, branch: string, upstream: string | null, defaultBranch: string | null): string | null {
   if (repositoryUrl === null || branch.startsWith('HEAD ')) return null
-  const base = upstream?.replace(/^origin\//, '') ?? defaultBranch
+  const slash = upstream?.indexOf('/') ?? -1
+  const base = upstream === null ? defaultBranch : slash < 0 ? upstream : upstream.slice(slash + 1)
   if (base === null || base === branch) return null
   return `${repositoryUrl}/compare/${encodeURIComponent(base)}...${encodeURIComponent(branch)}?expand=1`
 }
@@ -279,8 +280,14 @@ export class GithubRuntime extends TypertRemoteService {
   async checkoutBranch(path: string, branch: string, remote: boolean, signal?: AbortSignal): Promise<GitStatus> {
     const root = await this.root(path, signal)
     const checked = await this.checkedBranch(root, branch, signal)
+    const status = await this.getStatus(root, signal)
     const localExists = await git(['show-ref', '--verify', '--quiet', `refs/heads/${checked}`], { cwd: root, signal }).then(() => true).catch(() => false)
-    await gitWrite(remote && !localExists ? ['switch', '--track', `origin/${checked}`] : ['switch', checked], { cwd: root, signal })
+    if (remote && !localExists) {
+      if (status.remoteName === null) throw new Error('dsh-github: no configured remote is available for this branch')
+      await gitWrite(['switch', '--track', `${status.remoteName}/${checked}`], { cwd: root, signal })
+    } else {
+      await gitWrite(['switch', checked], { cwd: root, signal })
+    }
     return this.getStatus(root, signal)
   }
 

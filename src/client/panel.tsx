@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { GitDiff, GitDiffMode, GitFileChange, GitRepositoryOverview, GitStatus } from '../types.ts'
 import type { DshGithubKey } from './locales.ts'
 
@@ -49,6 +49,8 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   const [stagedExpanded, setStagedExpanded] = useState(true)
   const [workingExpanded, setWorkingExpanded] = useState(true)
   const [newBranch, setNewBranch] = useState('')
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const previousFocus = useRef<HTMLElement | null>(null)
 
   const acceptStatus = (next: GitStatus): void => {
     setStatus(next)
@@ -81,16 +83,27 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   }
 
   useEffect(() => {
-    refresh()
-    const onFocus = (): void => refresh(false)
-    const onVisibility = (): void => { if (document.visibilityState === 'visible') refresh(false) }
+    previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    closeButtonRef.current?.focus()
+    const onKeyDown = (event: globalThis.KeyboardEvent): void => {
+      if (event.key === 'Escape') onClose()
+    }
+    const onFocus = (): void => {
+      refresh(false)
+    }
+    const onVisibility = (): void => {
+      if (document.visibilityState === 'visible') onFocus()
+    }
+    document.addEventListener('keydown', onKeyDown)
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
+      document.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVisibility)
+      previousFocus.current?.focus()
     }
-  }, [path])
+  }, [path, onClose])
   useEffect(() => { if (tab === 'repository') refreshOverview() }, [path, tab])
   useEffect(() => {
     if (selected === null) { setDiff(null); return }
@@ -140,7 +153,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   const staged = status?.files.filter(file => hasMode(file, 'staged')) ?? []
   const working = status?.files.filter(file => hasMode(file, 'working')) ?? []
   const canCommit = operation === null && message.trim() !== '' && staged.length > 0
-  const canRemote = operation === null && status?.remoteName !== null
+  const canRemote = operation === null && status !== null && status.remoteName !== null && !status.branch.startsWith('HEAD ')
   const primaryOperation: 'fetch' | 'sync' | null = status?.upstream === null ? 'sync' : status?.ahead !== 0 || status?.behind !== 0 ? 'sync' : 'fetch'
   const openUrl = (url: string): void => { window.open(url, '_blank', 'noopener,noreferrer') }
   const commit = (): void => { if (canCommit) runStatusAction('commit', () => actions.commit(path, message.trim()), true) }
@@ -175,28 +188,28 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   const operationLabel = operation === null ? null : t(`panel.operation.${operation}`)
 
   return <div className="dsh-github-panel-root" role="dialog" aria-modal="true" aria-label={t('panel.title')}>
-    <div className="dsh-github-panel-mask" onClick={onClose} />
-    <section className="dsh-github-panel">
+    <div className="dsh-github-panel-mask" aria-hidden="true" onClick={onClose} />
+    <section className="dsh-github-panel" tabIndex={-1}>
       <header className="dsh-github-panel-header">
         <div><strong>{title}</strong><small>{status?.root ?? path}</small></div>
         <div className="dsh-github-panel-actions">
-          <button type="button" onClick={() => { if (tab === 'changes') refresh(); else refreshOverview() }} aria-label={t('panel.refresh')} title={t('panel.refresh')}>↻</button>
+          <button type="button" disabled={loading || overviewLoading || operation !== null} onClick={() => { if (tab === 'changes') refresh(); else refreshOverview() }} aria-label={t('panel.refresh')} title={t('panel.refresh')}>↻</button>
           {status?.githubUrl ? <button type="button" onClick={() => openUrl(status.githubUrl!)}>{t('panel.openGithub')}</button> : null}
-          <button type="button" onClick={onClose} aria-label={t('panel.close')} title={t('panel.close')}>×</button>
+          <button ref={closeButtonRef} type="button" onClick={onClose} aria-label={t('panel.close')} title={t('panel.close')}>×</button>
         </div>
       </header>
-      <div className="dsh-github-tabs" role="tablist">
-        <button type="button" role="tab" aria-selected={tab === 'changes'} className={tab === 'changes' ? 'active' : ''} onClick={() => setTab('changes')}>{t('panel.sourceControl')}{status && status.files.length > 0 ? <span className="dsh-github-tab-count">{status.files.length}</span> : null}</button>
-        <button type="button" role="tab" aria-selected={tab === 'repository'} className={tab === 'repository' ? 'active' : ''} onClick={() => setTab('repository')}>{t('panel.repository')}</button>
+      <div className="dsh-github-tabs" role="tablist" aria-label={t('panel.title')}>
+        <button id="dsh-github-tab-changes" type="button" role="tab" aria-controls="dsh-github-tabpanel-changes" aria-selected={tab === 'changes'} className={tab === 'changes' ? 'active' : ''} onClick={() => setTab('changes')}>{t('panel.sourceControl')}{status && status.files.length > 0 ? <span className="dsh-github-tab-count">{status.files.length}</span> : null}</button>
+        <button id="dsh-github-tab-repository" type="button" role="tab" aria-controls="dsh-github-tabpanel-repository" aria-selected={tab === 'repository'} className={tab === 'repository' ? 'active' : ''} onClick={() => setTab('repository')}>{t('panel.repository')}</button>
       </div>
       {status ? <div className="dsh-github-panel-meta"><span>⑂ {status.branch}</span>{status.remoteName ? <span>{status.remoteName}</span> : null}{status.upstream ? <span>↑ {status.ahead} · ↓ {status.behind}</span> : <span>{t('panel.noUpstream')}</span>}<span>{status.files.length} {t('panel.filesChanged')}</span>{operationLabel ? <strong>{operationLabel}</strong> : null}</div> : null}
       <div className="dsh-github-live" aria-live="polite">{operationLabel ?? error ?? ''}</div>
       {error ? <p className="dsh-github-panel-error">{error}</p> : null}
       {loading ? <p className="dsh-github-panel-message">{t('panel.loading')}</p> : null}
 
-      {!loading && status && tab === 'changes' ? <div className="dsh-github-source-layout">
+      {!loading && status && tab === 'changes' ? <div id="dsh-github-tabpanel-changes" role="tabpanel" aria-labelledby="dsh-github-tab-changes" className="dsh-github-source-layout">
         <aside className="dsh-github-source-sidebar">
-          <textarea value={message} maxLength={10_000} disabled={operation === 'commit'} onChange={event => setMessage(event.target.value)} onKeyDown={commitKeyDown} placeholder={t('panel.commitPlaceholder')} aria-label={`${t('panel.commitPlaceholder')}. ${t('panel.commitShortcut')}`} rows={3} />
+          <textarea value={message} maxLength={10_000} disabled={operation !== null} onChange={event => setMessage(event.target.value)} onKeyDown={commitKeyDown} placeholder={t('panel.commitPlaceholder')} aria-label={`${t('panel.commitPlaceholder')}. ${t('panel.commitShortcut')}`} rows={3} />
           <div className="dsh-github-commit-hint"><span>{t('panel.commitShortcut')}</span><span>{message.length}/10000</span></div>
           <div className="dsh-github-primary-actions">
             <button type="button" className="primary" disabled={!canCommit} onClick={commit}>{operation === 'commit' ? t('panel.operation.commit') : t('panel.commit')}</button>
@@ -218,7 +231,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
         </article>
       </div> : null}
 
-      {!loading && status && tab === 'repository' ? <div className="dsh-github-overview">
+      {!loading && status && tab === 'repository' ? <div id="dsh-github-tabpanel-repository" role="tabpanel" aria-labelledby="dsh-github-tab-repository" className="dsh-github-overview">
         {overviewLoading ? <p className="dsh-github-panel-message">{t('panel.loadingRepository')}</p> : null}
         {overview ? <>
           <section><h2>{t('panel.branches')} <span>{overview.branches.length}</span></h2>

@@ -209,6 +209,32 @@ describe('GithubRuntime', () => {
     }
   })
 
+  it('checks out remote branches through the configured non-origin remote', async () => {
+    const path = await tempRepo()
+    const remote = await bareRemote()
+    const clone = await mkdtemp('/tmp/dsh-github-clone-')
+    try {
+      await git(path, 'remote', 'add', 'upstream', remote)
+      await new GithubRuntime(new Context(), config).push(path)
+      await execFileAsync('git', ['clone', remote, clone])
+      await git(clone, 'remote', 'rename', 'origin', 'upstream')
+      await git(clone, 'config', 'user.name', 'Test')
+      await git(clone, 'config', 'user.email', 'test@example.com')
+      await git(clone, 'switch', '-c', 'feature/non-origin')
+      await writeFile(`${clone}/remote.txt`, 'remote branch\n')
+      await git(clone, 'add', 'remote.txt')
+      await git(clone, 'commit', '-m', 'remote branch')
+      await git(clone, 'push', '-u', 'upstream', 'feature/non-origin')
+      const runtime = new GithubRuntime(new Context(), config)
+      await runtime.fetch(path)
+      await expect(runtime.checkoutBranch(path, 'feature/non-origin', true)).resolves.toMatchObject({ branch: 'feature/non-origin' })
+    } finally {
+      await rm(path, { recursive: true, force: true })
+      await rm(remote, { recursive: true, force: true })
+      await rm(clone, { recursive: true, force: true })
+    }
+  })
+
   it('creates branches and checks out local or remote branches safely', async () => {
     const path = await tempRepo()
     const remote = await bareRemote()
