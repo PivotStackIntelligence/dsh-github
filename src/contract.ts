@@ -14,7 +14,7 @@ export const branchNameSchema = z.string().trim().min(1).max(255)
 
 const fileChangeSchema = z.object({
   path: z.string(), index: z.string(), worktree: z.string(),
-  kind: z.enum(['untracked', 'added', 'deleted', 'renamed', 'copied', 'modified']),
+  kind: z.enum(['untracked', 'added', 'deleted', 'renamed', 'copied', 'conflict', 'modified']),
 }).readonly()
 
 /** Wire codec for the repository status projection. */

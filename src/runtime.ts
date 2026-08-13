@@ -38,6 +38,7 @@ async function gitWrite(args: string[], options: ExecOptions): Promise<string> {
 }
 
 function kindOf(index: string, worktree: string): GitFileChange['kind'] {
+  if (index === 'U' || worktree === 'U') return 'conflict'
   if (index === '?' && worktree === '?') return 'untracked'
   const code = index !== ' ' ? index : worktree
   if (code === 'A') return 'added'

@@ -91,6 +91,22 @@ describe('GithubRuntime', () => {
     } finally { await rm(path, { recursive: true, force: true }) }
   })
 
+  it('marks unmerged paths as conflicts', async () => {
+    const path = await tempRepo()
+    try {
+      await git(path, 'switch', '-c', 'conflict')
+      await writeFile(`${path}/README.md`, 'branch change\n')
+      await git(path, 'add', 'README.md')
+      await git(path, 'commit', '-m', 'branch change')
+      await git(path, 'switch', '-')
+      await writeFile(`${path}/README.md`, 'main change\n')
+      await git(path, 'add', 'README.md')
+      await git(path, 'commit', '-m', 'main change')
+      await expect(git(path, 'merge', 'conflict')).rejects.toThrow()
+      await expect(new GithubRuntime(new Context(), config).getStatus(path)).resolves.toMatchObject({ files: [expect.objectContaining({ path: 'README.md', kind: 'conflict' })] })
+    } finally { await rm(path, { recursive: true, force: true }) }
+  })
+
   it('returns actionable commit errors', async () => {
     const path = await tempRepo()
     try {

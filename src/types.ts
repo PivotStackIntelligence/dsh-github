@@ -7,7 +7,7 @@ export interface GitFileChange {
   /** Worktree-side status code, or a space when unchanged. */
   worktree: string
   /** Whether the path is untracked, added, deleted, renamed, copied, or modified. */
-  kind: 'untracked' | 'added' | 'deleted' | 'renamed' | 'copied' | 'modified'
+  kind: 'untracked' | 'added' | 'deleted' | 'renamed' | 'copied' | 'conflict' | 'modified'
 }
 
 /** Repository metadata and the current change list. */
