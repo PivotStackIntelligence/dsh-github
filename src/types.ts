@@ -32,6 +32,10 @@ export interface GitStatus {
   remoteUrl: string | null
   /** Browser URL for a github.com remote, when detected. */
   githubUrl: string | null
+  /** Name of the remote selected for push by local Git configuration. */
+  pushRemoteName: string | null
+  /** Push URL selected by local Git configuration, with credentials removed. */
+  pushRemoteUrl: string | null
   /** Full local HEAD commit SHA. */
   headSha: string
   /** Browser URL for the local HEAD commit, when GitHub is detected. */

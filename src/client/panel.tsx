@@ -138,7 +138,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   }
 
   const commitAndPush = (): void => {
-    if (!canCommit || !canRemote) return
+    if (!canCommit || !canPush) return
     setOperation('commitAndPush')
     setError(null)
     setNotice(null)
@@ -163,7 +163,8 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   const untracked = workingFiles.filter(file => file.kind === 'untracked')
   const working = workingFiles.filter(file => file.kind !== 'untracked')
   const canCommit = operation === null && message.trim() !== '' && staged.length > 0
-  const canRemote = operation === null && status !== null && status.remoteName !== null && !status.branch.startsWith('HEAD ')
+  const canFetch = operation === null && status !== null && status.remoteName !== null && !status.branch.startsWith('HEAD ')
+  const canPush = operation === null && status !== null && status.pushRemoteName !== null && !status.branch.startsWith('HEAD ')
   const primaryOperation: 'fetch' | 'sync' | null = status?.upstream === null ? 'sync' : status?.ahead !== 0 || status?.behind !== 0 ? 'sync' : 'fetch'
   const openUrl = (url: string): void => { window.open(url, '_blank', 'noopener,noreferrer') }
   const commit = (): void => { if (canCommit) runStatusAction('commit', () => actions.commit(path, message.trim()), true) }
@@ -213,7 +214,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
         <button id="dsh-github-tab-changes" type="button" role="tab" aria-controls="dsh-github-tabpanel-changes" aria-selected={tab === 'changes'} className={tab === 'changes' ? 'active' : ''} onClick={() => setTab('changes')}>{t('panel.sourceControl')}{status && status.files.length > 0 ? <span className="dsh-github-tab-count">{status.files.length}</span> : null}</button>
         <button id="dsh-github-tab-repository" type="button" role="tab" aria-controls="dsh-github-tabpanel-repository" aria-selected={tab === 'repository'} className={tab === 'repository' ? 'active' : ''} onClick={() => setTab('repository')}>{t('panel.repository')}</button>
       </div>
-      {status ? <div className="dsh-github-panel-meta"><span>⑂ {status.branch}</span>{status.remoteName ? <span>{status.remoteName}</span> : null}{status.upstream ? <span>↑ {status.ahead} · ↓ {status.behind}</span> : <span>{t('panel.noUpstream')}</span>}<span>{status.files.length} {t('panel.filesChanged')}</span>{operationLabel ? <strong>{operationLabel}</strong> : null}</div> : null}
+      {status ? <div className="dsh-github-panel-meta"><span>⑂ {status.branch}</span>{status.remoteName ? <span>{status.remoteName}</span> : null}{status.pushRemoteName && status.pushRemoteName !== status.remoteName ? <span>{t('panel.pushRemote', { name: status.pushRemoteName })}</span> : null}{status.upstream ? <span>↑ {status.ahead} · ↓ {status.behind}</span> : <span>{t('panel.noUpstream')}</span>}<span>{status.files.length} {t('panel.filesChanged')}</span>{operationLabel ? <strong>{operationLabel}</strong> : null}</div> : null}
       <div className="dsh-github-live" aria-live="polite">{operationLabel ?? error ?? notice ?? ''}</div>
       {error ? <p className="dsh-github-panel-error">{error}</p> : null}
       {loading ? <p className="dsh-github-panel-message">{t('panel.loading')}</p> : null}
@@ -224,13 +225,13 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
           <div className="dsh-github-commit-hint"><span>{t('panel.commitShortcut')}</span><span>{message.length}/10000</span></div>
           <div className="dsh-github-primary-actions">
             <button type="button" className="primary" disabled={!canCommit} onClick={commit}>{operation === 'commit' ? t('panel.operation.commit') : t('panel.commit')}</button>
-            <button type="button" disabled={!canRemote} onClick={() => runStatusAction('push', () => actions.push(path))}>{operation === 'push' ? t('panel.operation.push') : t('panel.push')}{operation !== 'push' && status.ahead > 0 ? ` (${status.ahead})` : ''}</button>
-            <button type="button" disabled={!canCommit || !canRemote} onClick={commitAndPush}>{operation === 'commitAndPush' || operation === 'push' ? t('panel.operation.commitAndPush') : t('panel.commitAndPush')}</button>
+            <button type="button" disabled={!canPush} onClick={() => runStatusAction('push', () => actions.push(path))}>{operation === 'push' ? t('panel.operation.push') : t('panel.push')}{operation !== 'push' && status.ahead > 0 ? ` (${status.ahead})` : ''}</button>
+            <button type="button" disabled={!canCommit || !canPush} onClick={commitAndPush}>{operation === 'commitAndPush' || operation === 'push' ? t('panel.operation.commitAndPush') : t('panel.commitAndPush')}</button>
           </div>
           <div className="dsh-github-secondary-actions">
-            <button type="button" disabled={!canRemote} onClick={() => runStatusAction('fetch', () => actions.fetch(path))}>{operation === 'fetch' ? t('panel.operation.fetch') : t('panel.fetch')}</button>
-            <button type="button" disabled={operation !== null || status.upstream === null || status.behind === 0} onClick={() => runStatusAction('pull', () => actions.pull(path))}>{operation === 'pull' ? t('panel.operation.pull') : t('panel.pull')}</button>
-            <button type="button" className="primary" disabled={!canRemote} onClick={() => runStatusAction(primaryOperation ?? 'fetch', () => primaryOperation === 'sync' ? actions.sync(path) : actions.fetch(path))}>{primaryOperation === 'sync' ? (status.upstream === null ? t('panel.publishBranch') : t('panel.syncChanges')) : t('panel.fetch')}</button>
+            <button type="button" disabled={!canFetch} onClick={() => runStatusAction('fetch', () => actions.fetch(path))}>{operation === 'fetch' ? t('panel.operation.fetch') : t('panel.fetch')}</button>
+            <button type="button" disabled={!canFetch || status.upstream === null || status.behind === 0} onClick={() => runStatusAction('pull', () => actions.pull(path))}>{operation === 'pull' ? t('panel.operation.pull') : t('panel.pull')}</button>
+            <button type="button" className="primary" disabled={(primaryOperation === 'sync' ? !canPush : !canFetch) || operation !== null} onClick={() => runStatusAction(primaryOperation ?? 'fetch', () => primaryOperation === 'sync' ? actions.sync(path) : actions.fetch(path))}>{primaryOperation === 'sync' ? (status.upstream === null ? t('panel.publishBranch') : t('panel.syncChanges')) : t('panel.fetch')}</button>
           </div>
           {group('staged', staged, 'panel.stagedChanges', stagedExpanded, setStagedExpanded)}
           {group('working', working, 'panel.changes', workingExpanded, setWorkingExpanded)}

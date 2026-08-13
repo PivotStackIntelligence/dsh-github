@@ -89,6 +89,21 @@ describe('GithubRuntime', () => {
     } finally { await rm(path, { recursive: true, force: true }) }
   })
 
+  it('keeps fetch and push remotes separate when local Git config says so', async () => {
+    const path = await tempRepo()
+    try {
+      const branch = (await git(path, 'branch', '--show-current')).trim()
+      await git(path, 'remote', 'add', 'upstream', 'git@github.com:owner/upstream.git')
+      await git(path, 'remote', 'add', 'fork', 'git@github.com:owner/fork.git')
+      await git(path, 'config', `branch.${branch}.remote`, 'upstream')
+      await git(path, 'config', `branch.${branch}.pushRemote`, 'fork')
+      await expect(new GithubRuntime(new Context(), config).getStatus(path)).resolves.toMatchObject({
+        remoteName: 'upstream', remoteUrl: 'git@github.com:owner/upstream.git',
+        pushRemoteName: 'fork', pushRemoteUrl: 'git@github.com:owner/fork.git', githubUrl: 'https://github.com/owner/upstream',
+      })
+    } finally { await rm(path, { recursive: true, force: true }) }
+  })
+
   it('uses the current branch remote instead of assuming origin', async () => {
     const path = await tempRepo()
     try {
