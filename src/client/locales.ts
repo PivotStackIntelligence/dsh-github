@@ -20,6 +20,9 @@ export const zh = {
   'panel.operation.commit': '正在提交…', 'panel.operation.commitAndPush': '正在提交并推送…', 'panel.operation.push': '正在推送…', 'panel.operation.fetch': '正在获取…',
   'panel.operation.pull': '正在拉取…', 'panel.operation.sync': '正在同步…',
   'panel.operation.checkoutBranch': '正在切换分支…', 'panel.operation.createBranch': '正在创建分支…',
+  'panel.success.stage': '已暂存改动。', 'panel.success.unstage': '已取消暂存。', 'panel.success.stageAll': '已暂存全部改动。', 'panel.success.unstageAll': '已取消全部暂存。',
+  'panel.success.commit': '提交已创建。', 'panel.success.commitAndPush': '提交已创建并已推送。', 'panel.success.push': '已推送到远程。', 'panel.success.fetch': '已从远程获取更新。', 'panel.success.pull': '已拉取更新。', 'panel.success.sync': '已同步远程分支。',
+  'panel.success.checkoutBranch': '已切换分支。', 'panel.success.createBranch': '已创建并切换到新分支。',
 } satisfies Record<string, string>
 export type DshGithubKey = keyof typeof zh
 declare module '@deepseek-ai/dsh-client-ui-slots' { interface LocaleNamespaceMap { 'dsh-github': DshGithubKey } }
@@ -43,6 +46,9 @@ export const en = {
   'panel.operation.unstageAll': 'Unstaging all changes…', 'panel.operation.commit': 'Committing…', 'panel.operation.commitAndPush': 'Committing and pushing…', 'panel.operation.push': 'Pushing…',
   'panel.operation.fetch': 'Fetching…', 'panel.operation.pull': 'Pulling…', 'panel.operation.sync': 'Syncing…',
   'panel.operation.checkoutBranch': 'Switching branch…', 'panel.operation.createBranch': 'Creating branch…',
+  'panel.success.stage': 'Changes staged.', 'panel.success.unstage': 'Changes unstaged.', 'panel.success.stageAll': 'All changes staged.', 'panel.success.unstageAll': 'All changes unstaged.',
+  'panel.success.commit': 'Commit created.', 'panel.success.commitAndPush': 'Commit created and pushed.', 'panel.success.push': 'Pushed to remote.', 'panel.success.fetch': 'Fetched remote updates.', 'panel.success.pull': 'Pulled updates.', 'panel.success.sync': 'Remote branch synchronized.',
+  'panel.success.checkoutBranch': 'Branch switched.', 'panel.success.createBranch': 'Created and switched to the new branch.',
 } satisfies Record<DshGithubKey, string>
 export const NS = 'dsh-github'
 export function fmt(template: string, params: Record<string, string>): string { return template.replace(/\{(\w+)\}/g, (_match, key: string) => params[key] ?? `{${key}}`) }

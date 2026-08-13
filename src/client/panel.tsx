@@ -41,6 +41,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   const [status, setStatus] = useState<GitStatus | null>(null)
   const [overview, setOverview] = useState<GitRepositoryOverview | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [selected, setSelected] = useState<SelectedChange | null>(null)
   const [diff, setDiff] = useState<GitDiff | null>(null)
   const [message, setMessage] = useState('')
@@ -68,7 +69,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
 
   const refresh = (clearError = true): void => {
     setLoading(true)
-    if (clearError) setError(null)
+    if (clearError) { setError(null); setNotice(null) }
     void actions.getStatus(path).then(result => {
       if (!result.ok) throw new Error(result.error.message)
       acceptStatus(result.value)
@@ -116,17 +117,20 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
       else setError(result.error.message)
     }).catch(reason => { if (!controller.signal.aborted) setError(errorMessage(reason)) })
     return () => controller.abort()
-  }, [path, selected?.path, selected?.mode])
+  }, [path, selected?.path, selected?.mode, status])
 
   const runStatusAction = (name: Exclude<Operation, null>, action: () => Promise<RemoteResult<GitStatus>>, clearMessage = false): void => {
     setOperation(name)
     setError(null)
+    setNotice(null)
     void action().then(result => {
       if (!result.ok) throw new Error(result.error.message)
       acceptStatus(result.value)
       if (name === 'checkoutBranch' || name === 'createBranch') void refreshOverview()
       if (clearMessage) setMessage('')
+      setNotice(t(`panel.success.${name}`))
     }).catch(reason => {
+      setNotice(null)
       setError(errorMessage(reason))
       refresh(false)
       if (name === 'checkoutBranch' || name === 'createBranch') void refreshOverview()
@@ -137,16 +141,18 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
     if (!canCommit || !canRemote) return
     setOperation('commitAndPush')
     setError(null)
+    setNotice(null)
     void actions.commit(path, message.trim()).then(result => {
       if (!result.ok) throw new Error(result.error.message)
       acceptStatus(result.value)
-      setOperation('push')
       return actions.push(path)
     }).then(result => {
       if (!result.ok) throw new Error(result.error.message)
       acceptStatus(result.value)
       setMessage('')
+      setNotice(t('panel.success.commitAndPush'))
     }).catch(reason => {
+      setNotice(null)
       setError(errorMessage(reason))
       refresh(false)
     }).finally(() => setOperation(null))
@@ -208,7 +214,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
         <button id="dsh-github-tab-repository" type="button" role="tab" aria-controls="dsh-github-tabpanel-repository" aria-selected={tab === 'repository'} className={tab === 'repository' ? 'active' : ''} onClick={() => setTab('repository')}>{t('panel.repository')}</button>
       </div>
       {status ? <div className="dsh-github-panel-meta"><span>⑂ {status.branch}</span>{status.remoteName ? <span>{status.remoteName}</span> : null}{status.upstream ? <span>↑ {status.ahead} · ↓ {status.behind}</span> : <span>{t('panel.noUpstream')}</span>}<span>{status.files.length} {t('panel.filesChanged')}</span>{operationLabel ? <strong>{operationLabel}</strong> : null}</div> : null}
-      <div className="dsh-github-live" aria-live="polite">{operationLabel ?? error ?? ''}</div>
+      <div className="dsh-github-live" aria-live="polite">{operationLabel ?? error ?? notice ?? ''}</div>
       {error ? <p className="dsh-github-panel-error">{error}</p> : null}
       {loading ? <p className="dsh-github-panel-message">{t('panel.loading')}</p> : null}
 
