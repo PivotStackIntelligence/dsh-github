@@ -104,10 +104,13 @@ function syntheticUntrackedDiff(filePath: string, text: string): string {
   return [`diff --git a/${filePath} b/${filePath}`, 'new file mode 100644', '--- /dev/null', `+++ b/${filePath}`, `@@ -0,0 +${lines.length} @@`, ...lines.map(line => `+${line}`)].join('\n') + '\n'
 }
 
-function parseBranches(output: string): GitBranch[] {
+function parseBranches(output: string, remoteName: string | null): GitBranch[] {
+  const remotePrefix = remoteName === null ? null : `${remoteName}/`
+  const remoteRefPrefix = remoteName === null ? null : `refs/remotes/${remoteName}/`
   return output.split('\0').map(record => record.trimStart()).filter(Boolean).map(record => {
     const [ref = '', short = '', upstream = '', head = ''] = record.split('\t')
-    return { name: short.replace(/^origin\//, ''), current: head === '*', remote: ref.startsWith('refs/remotes/'), upstream: upstream || null, branchUrl: null }
+    const remote = remoteRefPrefix !== null && ref.startsWith(remoteRefPrefix)
+    return { name: remote && remotePrefix !== null ? short.slice(remotePrefix.length) : short, current: head === '*', remote, upstream: upstream || null, branchUrl: null }
   }).filter(branch => branch.name !== 'HEAD')
 }
 
@@ -132,6 +135,19 @@ export class GithubRuntime extends TypertRemoteService {
     return (await git(['rev-parse', '--show-toplevel'], { cwd: path, signal })).trim()
   }
 
+  private async remoteForBranch(root: string, branch: string, upstream: string | null, signal?: AbortSignal): Promise<{ name: string; url: string } | null> {
+    if (branch.startsWith('HEAD ')) return null
+    const configured = await git(['config', '--get', `branch.${branch}.remote`], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
+    if (configured === '.') return null
+    const upstreamRemote = upstream?.split('/', 1)[0] ?? ''
+    const name = configured ? configured : upstreamRemote || await git(['remote', 'get-url', '--all', 'origin'], { cwd: root, signal }).then(() => 'origin').catch(async () => {
+      return (await git(['remote'], { cwd: root, signal }).catch(() => '')).split(/\s+/).find(Boolean) ?? ''
+    })
+    if (!name) return null
+    const url = await git(['remote', 'get-url', name], { cwd: root, signal }).then(value => value.trim()).catch(() => '')
+    return url ? { name, url } : null
+  }
+
   /** Read repository metadata and the bounded changed-file list. */
   @Remote
   async getStatus(path: string, signal?: AbortSignal): Promise<GitStatus> {
@@ -145,9 +161,9 @@ export class GithubRuntime extends TypertRemoteService {
       behind = Number.parseInt(behindText ?? '0', 10) || 0
       ahead = Number.parseInt(aheadText ?? '0', 10) || 0
     }
-    const remoteUrl = await git(['remote', 'get-url', 'origin'], { cwd: root, signal }).then(value => value.trim()).catch(() => null)
+    const remote = await this.remoteForBranch(root, branch, upstream, signal)
     const parsed = parseStatus(await git(['status', '--porcelain=v1', '-z'], { cwd: root, signal, maxBuffer: Math.max(64 * 1024, this.config.maxFiles * 1024) }), this.config.maxFiles)
-    return { root, branch, upstream, ahead, behind, remoteUrl: remoteForDisplay(remoteUrl), githubUrl: githubUrl(remoteUrl), ...parsed }
+    return { root, branch, upstream, ahead, behind, remoteName: remote?.name ?? null, remoteUrl: remoteForDisplay(remote?.url ?? null), githubUrl: githubUrl(remote?.url ?? null), ...parsed }
   }
 
   /** Read one repository-relative file's bounded unified diff. */
@@ -218,8 +234,8 @@ export class GithubRuntime extends TypertRemoteService {
   async push(path: string, signal?: AbortSignal): Promise<GitStatus> {
     const status = await this.getStatus(path, signal)
     if (status.branch.startsWith('HEAD ')) throw new Error('dsh-github: cannot push a detached HEAD')
-    if (status.remoteUrl === null) throw new Error('dsh-github: origin remote is not configured')
-    await gitWrite(status.upstream === null ? ['push', '-u', 'origin', status.branch] : ['push'], { cwd: status.root, signal })
+    if (status.remoteName === null || status.remoteUrl === null) throw new Error('dsh-github: a Git remote is not configured')
+    await gitWrite(status.upstream === null ? ['push', '-u', status.remoteName, status.branch] : ['push'], { cwd: status.root, signal })
     return this.getStatus(status.root, signal)
   }
 
@@ -227,8 +243,8 @@ export class GithubRuntime extends TypertRemoteService {
   @Remote
   async fetch(path: string, signal?: AbortSignal): Promise<GitStatus> {
     const status = await this.getStatus(path, signal)
-    if (status.remoteUrl === null) throw new Error('dsh-github: origin remote is not configured')
-    await gitWrite(['fetch', 'origin'], { cwd: status.root, signal })
+    if (status.remoteName === null || status.remoteUrl === null) throw new Error('dsh-github: a Git remote is not configured')
+    await gitWrite(['fetch', status.remoteName], { cwd: status.root, signal })
     return this.getStatus(status.root, signal)
   }
 
@@ -246,9 +262,9 @@ export class GithubRuntime extends TypertRemoteService {
   async sync(path: string, signal?: AbortSignal): Promise<GitStatus> {
     const status = await this.getStatus(path, signal)
     if (status.branch.startsWith('HEAD ')) throw new Error('dsh-github: cannot sync a detached HEAD')
-    if (status.remoteUrl === null) throw new Error('dsh-github: origin remote is not configured')
+    if (status.remoteName === null || status.remoteUrl === null) throw new Error('dsh-github: a Git remote is not configured')
     if (status.upstream !== null) await gitWrite(['pull', '--ff-only'], { cwd: status.root, signal })
-    await gitWrite(status.upstream === null ? ['push', '-u', 'origin', status.branch] : ['push'], { cwd: status.root, signal })
+    await gitWrite(status.upstream === null ? ['push', '-u', status.remoteName, status.branch] : ['push'], { cwd: status.root, signal })
     return this.getStatus(status.root, signal)
   }
 
@@ -280,13 +296,15 @@ export class GithubRuntime extends TypertRemoteService {
   @Remote
   async getRepositoryOverview(path: string, signal?: AbortSignal): Promise<GitRepositoryOverview> {
     const root = await this.root(path, signal)
-    const branches = parseBranches(await git(['for-each-ref', '--format=%(refname)%09%(refname:short)%09%(upstream:short)%09%(HEAD)%00', 'refs/heads', 'refs/remotes/origin'], { cwd: root, signal }))
-    const remote = await git(['remote', 'get-url', 'origin'], { cwd: root, signal }).then(value => value.trim()).catch(() => null)
-    const repositoryUrl = githubUrl(remote)
+    const status = await this.getStatus(root, signal)
+    const remoteName = status.remoteName
+    const refs = remoteName === null ? ['refs/heads'] : ['refs/heads', `refs/remotes/${remoteName}`]
+    const branches = parseBranches(await git(['for-each-ref', '--format=%(refname)%09%(refname:short)%09%(upstream:short)%09%(HEAD)%00', ...refs], { cwd: root, signal }), remoteName)
+    const repositoryUrl = status.githubUrl
     const current = branches.find(branch => branch.current && !branch.remote)
-    const defaultBranch = await git(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'], { cwd: root, signal }).then(value => value.trim().replace(/^origin\//, '')).catch(() => null)
+    const defaultBranch = remoteName === null ? null : await git(['symbolic-ref', '--short', `refs/remotes/${remoteName}/HEAD`], { cwd: root, signal }).then(value => value.trim().replace(new RegExp(`^${remoteName}/`), '')).catch(() => null)
     const linkedBranches = branches.map(branch => ({ ...branch, branchUrl: branchUrl(repositoryUrl, branch.name) }))
-    return { branches: linkedBranches, githubUrl: repositoryUrl, compareUrl: current === undefined ? null : compareUrl(repositoryUrl, current.name, current.upstream, defaultBranch) }
+    return { branches: linkedBranches, remoteName, githubUrl: repositoryUrl, compareUrl: current === undefined ? null : compareUrl(repositoryUrl, current.name, current.upstream, defaultBranch) }
   }
 
 }

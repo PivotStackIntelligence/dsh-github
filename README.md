@@ -9,8 +9,8 @@ A Source Control and GitHub repository panel for DeepSeek Harness.
 - Stages and unstages individual files or all changes through fixed-argument local `git` commands.
 - Commits staged changes from the panel, including a `Cmd/Ctrl+Enter` shortcut and operation feedback.
 - Pushes, fetches, fast-forward pulls, and synchronizes through the repository's configured Git remotes and credential helpers.
-- Lists local branches and `origin` remote-tracking branches, checks them out, and creates local branches.
-- Detects a GitHub `origin` remote, opens the repository in the browser, and opens GitHub's compare page for pull-request creation.
+- Lists local branches and the current branch remote's tracking branches, checks them out, and creates local branches.
+- Derives GitHub repository, branch, and compare links from the configured branch remote, then opens those pages in the browser.
 
 The plugin uses the repository's normal local Git configuration. It does not store GitHub tokens, implement OAuth, depend on GitHub CLI, or expose arbitrary shell commands. Git writes require an explicit user action, and repository state is reloaded after each operation.
 

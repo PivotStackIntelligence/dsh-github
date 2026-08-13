@@ -140,7 +140,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   const staged = status?.files.filter(file => hasMode(file, 'staged')) ?? []
   const working = status?.files.filter(file => hasMode(file, 'working')) ?? []
   const canCommit = operation === null && message.trim() !== '' && staged.length > 0
-  const canRemote = operation === null && status?.remoteUrl !== null
+  const canRemote = operation === null && status?.remoteName !== null
   const primaryOperation: 'fetch' | 'sync' | null = status?.upstream === null ? 'sync' : status?.ahead !== 0 || status?.behind !== 0 ? 'sync' : 'fetch'
   const openUrl = (url: string): void => { window.open(url, '_blank', 'noopener,noreferrer') }
   const commit = (): void => { if (canCommit) runStatusAction('commit', () => actions.commit(path, message.trim()), true) }
@@ -189,7 +189,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
         <button type="button" role="tab" aria-selected={tab === 'changes'} className={tab === 'changes' ? 'active' : ''} onClick={() => setTab('changes')}>{t('panel.sourceControl')}{status && status.files.length > 0 ? <span className="dsh-github-tab-count">{status.files.length}</span> : null}</button>
         <button type="button" role="tab" aria-selected={tab === 'repository'} className={tab === 'repository' ? 'active' : ''} onClick={() => setTab('repository')}>{t('panel.repository')}</button>
       </div>
-      {status ? <div className="dsh-github-panel-meta"><span>⑂ {status.branch}</span>{status.upstream ? <span>↑ {status.ahead} · ↓ {status.behind}</span> : <span>{t('panel.noUpstream')}</span>}<span>{status.files.length} {t('panel.filesChanged')}</span>{operationLabel ? <strong>{operationLabel}</strong> : null}</div> : null}
+      {status ? <div className="dsh-github-panel-meta"><span>⑂ {status.branch}</span>{status.remoteName ? <span>{status.remoteName}</span> : null}{status.upstream ? <span>↑ {status.ahead} · ↓ {status.behind}</span> : <span>{t('panel.noUpstream')}</span>}<span>{status.files.length} {t('panel.filesChanged')}</span>{operationLabel ? <strong>{operationLabel}</strong> : null}</div> : null}
       <div className="dsh-github-live" aria-live="polite">{operationLabel ?? error ?? ''}</div>
       {error ? <p className="dsh-github-panel-error">{error}</p> : null}
       {loading ? <p className="dsh-github-panel-message">{t('panel.loading')}</p> : null}
@@ -226,7 +226,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
             <div className="dsh-github-branch-groups">{(['local', 'remote'] as const).map(kind => {
               const branches = overview.branches.filter(branch => branch.remote === (kind === 'remote'))
               if (branches.length === 0) return null
-              return <section className="dsh-github-branch-group" key={kind}><h3>{kind === 'local' ? t('panel.localBranches') : t('panel.remoteBranches')}</h3><div className="dsh-github-card-list">{branches.map(branch => <div className={`dsh-github-branch-card ${branch.current ? 'current' : ''}`} key={`${branch.remote ? 'remote' : 'local'}:${branch.name}`}><button type="button" className="dsh-github-branch-switch" disabled={operation !== null || branch.current} onClick={() => runStatusAction('checkoutBranch', () => actions.checkoutBranch(path, branch.name, branch.remote))}><strong>{branch.name}</strong><small>{branch.current ? t('panel.currentBranch') : branch.remote ? t('panel.remoteBranch') : branch.upstream ?? t('panel.localBranch')}</small></button>{branch.branchUrl ? <a className="dsh-github-branch-link" href={branch.branchUrl} target="_blank" rel="noreferrer" aria-label={`${t('panel.openBranch')}: ${branch.name}`}>↗</a> : null}</div>)}</div></section>
+              return <section className="dsh-github-branch-group" key={kind}><h3>{kind === 'local' ? t('panel.localBranches') : t('panel.remoteBranches')}</h3><div className="dsh-github-card-list">{branches.map(branch => <div className={`dsh-github-branch-card ${branch.current ? 'current' : ''}`} key={`${branch.remote ? 'remote' : 'local'}:${branch.name}`}><button type="button" className="dsh-github-branch-switch" disabled={operation !== null || branch.current} onClick={() => runStatusAction('checkoutBranch', () => actions.checkoutBranch(path, branch.name, branch.remote))}><strong>{branch.name}</strong><small>{branch.current ? t('panel.currentBranch') : branch.remote ? t('panel.remoteBranch', { name: overview.remoteName ?? 'origin' }) : branch.upstream ?? t('panel.localBranch')}</small></button>{branch.branchUrl ? <a className="dsh-github-branch-link" href={branch.branchUrl} target="_blank" rel="noreferrer" aria-label={`${t('panel.openBranch')}: ${branch.name}`}>↗</a> : null}</div>)}</div></section>
             })}</div>
           </section>
           <section><h2>{t('panel.githubLinks')}</h2>

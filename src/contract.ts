@@ -19,7 +19,7 @@ const fileChangeSchema = z.object({
 
 /** Wire codec for the repository status projection. */
 export const statusResultSchema = z.object({
-  root: z.string(), branch: z.string(), upstream: z.string().nullable(),
+  root: z.string(), branch: z.string(), upstream: z.string().nullable(), remoteName: z.string().nullable(),
   ahead: z.number(), behind: z.number(), remoteUrl: z.string().nullable(),
   githubUrl: z.string().nullable(), files: z.array(fileChangeSchema), truncated: z.boolean(),
 }).readonly()
@@ -33,7 +33,7 @@ const branchSchema = z.object({
 
 /** Wire codec for the repository branch and browser-link projection. */
 export const overviewResultSchema = z.object({
-  branches: z.array(branchSchema), githubUrl: z.string().nullable(), compareUrl: z.string().nullable(),
+  branches: z.array(branchSchema), remoteName: z.string().nullable(), githubUrl: z.string().nullable(), compareUrl: z.string().nullable(),
 }).readonly()
 
 const pathParameter = { name: 'path', wire: 'path', source: 'json' as const, codec: { mode: 'strict' as const, typeSymbol: 'dsh-github#Path', schema: pathSchema } }

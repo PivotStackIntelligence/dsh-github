@@ -9,8 +9,8 @@
 - 通过固定参数的本机 `git` 命令暂存和取消暂存单个文件或全部改动。
 - 在面板中填写 commit message 并提交已暂存改动，支持 `Cmd/Ctrl+Enter` 和操作状态反馈。
 - 通过仓库现有的 Git remote 与 credential helper 执行 Push、Fetch、仅 fast-forward 的 Pull 和同步。
-- 查看本地分支与 `origin` 远程跟踪分支，在面板中切换分支并创建新的本地分支。
-- 从 `origin` 检测 GitHub 仓库，在浏览器打开仓库，并打开 GitHub compare 页面创建 Pull Request。
+- 查看本地分支与当前分支远程的远程跟踪分支，在面板中切换分支并创建新的本地分支。
+- 根据当前分支使用的 Git remote 生成 GitHub 仓库、分支和 compare 链接，并在浏览器打开这些页面。
 
 插件使用仓库现有的本地 Git 配置，不保存 GitHub token、不实现 OAuth、不依赖 GitHub CLI，也不暴露任意 shell 命令。Git 写操作需要用户明确触发，并在完成后重新读取仓库状态。
 

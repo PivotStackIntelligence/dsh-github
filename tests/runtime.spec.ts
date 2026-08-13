@@ -43,11 +43,23 @@ describe('GithubRuntime', () => {
       await git(path, 'remote', 'add', 'origin', 'git@github.com:owner/repo.git')
       const runtime = new GithubRuntime(new Context(), config)
       await expect(runtime.getStatus(path)).resolves.toMatchObject({
-        remoteUrl: 'git@github.com:owner/repo.git', githubUrl: 'https://github.com/owner/repo',
+        remoteName: 'origin', remoteUrl: 'git@github.com:owner/repo.git', githubUrl: 'https://github.com/owner/repo',
         files: [{ path: 'README.md', index: ' ', worktree: 'M' }, { path: 'new.txt', kind: 'untracked' }],
       })
       await expect(runtime.getDiff(path, 'README.md', 'working')).resolves.toMatchObject({ diff: expect.stringContaining('-initial\n+changed') })
       await expect(runtime.getDiff(path, 'new.txt', 'working')).resolves.toMatchObject({ diff: expect.stringContaining('+new line') })
+    } finally { await rm(path, { recursive: true, force: true }) }
+  })
+
+  it('uses the current branch remote instead of assuming origin', async () => {
+    const path = await tempRepo()
+    try {
+      const branch = (await git(path, 'branch', '--show-current')).trim()
+      await git(path, 'remote', 'add', 'upstream', 'git@github.com:owner/repo.git')
+      await git(path, 'config', `branch.${branch}.remote`, 'upstream')
+      await expect(new GithubRuntime(new Context(), config).getStatus(path)).resolves.toMatchObject({
+        remoteName: 'upstream', remoteUrl: 'git@github.com:owner/repo.git', githubUrl: 'https://github.com/owner/repo',
+      })
     } finally { await rm(path, { recursive: true, force: true }) }
   })
 
@@ -122,6 +134,7 @@ describe('GithubRuntime', () => {
       await git(path, 'remote', 'add', 'origin', remote)
       const runtime = new GithubRuntime(new Context(), config)
       const result = await runtime.push(path)
+      expect(result.remoteName).toBe('origin')
       expect(result.upstream).toMatch(/^origin\/(master|main)$/)
       const overview = await runtime.getRepositoryOverview(path)
       expect(overview.branches.some(branch => branch.current && !branch.remote)).toBe(true)
@@ -159,7 +172,7 @@ describe('GithubRuntime', () => {
         compareUrl: 'https://github.com/owner/repo/compare/main...feature%2Fsource-control?expand=1',
         branches: expect.arrayContaining([
           expect.objectContaining({ name: 'feature/source-control', branchUrl: 'https://github.com/owner/repo/tree/feature%2Fsource-control' }),
-          expect.objectContaining({ name: 'main', branchUrl: 'https://github.com/owner/repo/tree/main' }),
+          expect.objectContaining({ name: 'main', remote: false, branchUrl: 'https://github.com/owner/repo/tree/main' }),
         ]),
       })
     } finally { await rm(path, { recursive: true, force: true }) }
@@ -212,6 +225,7 @@ describe('GithubRuntime', () => {
       await git(clone, 'push', '-u', 'origin', 'feature/remote')
       const runtime = new GithubRuntime(new Context(), config)
       await runtime.fetch(path)
+      await expect(runtime.getRepositoryOverview(path)).resolves.toMatchObject({ branches: expect.arrayContaining([expect.objectContaining({ name: 'feature/remote', remote: true })]) })
       await expect(runtime.checkoutBranch(path, 'feature/remote', true)).resolves.toMatchObject({ branch: 'feature/remote' })
       const defaultBranch = (await git(path, 'branch', '--format=%(refname:short)')).includes('main') ? 'main' : 'master'
       await expect(runtime.checkoutBranch(path, defaultBranch, false)).resolves.toMatchObject({ branch: defaultBranch })

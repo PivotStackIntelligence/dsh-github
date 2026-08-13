@@ -22,7 +22,9 @@ export interface GitStatus {
   ahead: number
   /** Commits behind upstream. */
   behind: number
-  /** Git remote URL for `origin`, when configured. */
+  /** Name of the Git remote selected by the current branch, when configured. */
+  remoteName: string | null
+  /** Git remote URL selected by the current branch, when configured. */
   remoteUrl: string | null
   /** Browser URL for a github.com remote, when detected. */
   githubUrl: string | null
@@ -61,8 +63,10 @@ export interface GitBranch {
 
 /** Branch and browser links for the active repository. */
 export interface GitRepositoryOverview {
-  /** Local and origin remote-tracking branches. */
+  /** Local and selected-remote tracking branches. */
   branches: GitBranch[]
+  /** Name of the Git remote used for branch listings and browser links. */
+  remoteName: string | null
   /** Browser URL for the detected GitHub repository. */
   githubUrl: string | null
   /** Browser URL for creating a pull request from the current branch. */
