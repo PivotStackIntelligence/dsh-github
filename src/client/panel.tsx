@@ -107,6 +107,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
 
   useEffect(() => {
     previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    refresh()
     closeButtonRef.current?.focus()
     const onKeyDown = (event: globalThis.KeyboardEvent): void => {
       if (event.key === 'Escape') onClose()
@@ -137,6 +138,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
     const controller = new AbortController()
     setDiff(null)
     void actions.getDiff(path, selected.path, selected.mode, controller.signal).then(result => {
+      if (controller.signal.aborted) return
       if (result.ok) setDiff(result.value)
       else setError(result.error.message)
     }).catch(reason => { if (!controller.signal.aborted) setError(errorMessage(reason)) })
