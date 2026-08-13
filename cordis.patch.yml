@@ -1,0 +1,4 @@
+# dsh-github bundle: mount the host plugin under its package name.
+- insert:
+    - id: dsh-github
+      name: dsh-github
