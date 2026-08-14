@@ -15,6 +15,10 @@
 
 插件使用仓库现有的本地 Git 配置、SSH 密钥、HTTPS credential helper 和 Git remote。不调用 GitHub API、不保存 GitHub token、不实现 OAuth、不依赖 GitHub CLI，也不暴露任意 shell 命令。GitHub 链接只打开对应的浏览器页面；Compare 页面是创建 pull request 的交接入口。Git 写操作需要用户明确触发，并在完成后重新读取仓库状态。
 
+## 实现分析
+
+状态模型、VS Code Git 对齐方式、本地认证边界和 GitHub 浏览器交接设计见 [docs/ANALYSIS.md](docs/ANALYSIS.md)。
+
 ## 环境要求
 
 - DeepSeek Harness `>=0.1.0-rc.6`

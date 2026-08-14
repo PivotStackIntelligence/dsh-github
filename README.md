@@ -16,6 +16,10 @@ A Source Control and GitHub repository panel for DeepSeek Harness.
 
 The plugin uses the repository's normal local Git configuration, SSH keys, HTTPS credential helpers, and Git remotes. It does not call the GitHub API, store GitHub tokens, implement OAuth, depend on GitHub CLI, or expose arbitrary shell commands. GitHub links open the corresponding browser pages; the Compare page is the handoff for creating a pull request. Git writes require an explicit user action, and repository state is reloaded after each operation.
 
+## Design notes
+
+See [docs/ANALYSIS.md](docs/ANALYSIS.md) for the state model, VS Code Git alignment, local authentication boundary, and GitHub browser handoff design.
+
 ## Requirements
 
 - DeepSeek Harness `>=0.1.0-rc.6`
