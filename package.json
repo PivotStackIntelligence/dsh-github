@@ -1,6 +1,6 @@
 {
   "name": "dsh-github",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Source Control and GitHub panel for DeepSeek Harness.",
   "license": "MIT",
   "type": "module",
@@ -44,7 +44,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json --noEmit",
     "test": "vitest run",
     "lint": "eslint .",
-    "check": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build"
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run build",
+    "prepublishOnly": "pnpm run check"
   },
   "engines": {
     "node": "^22.19 || >=24"
@@ -93,17 +94,17 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "link:/Users/brianq/.dsh/profiles/node_modules/@deepseek-ai/cordis",
-    "@deepseek-ai/dsh-typert-protocol": "link:/Users/brianq/.dsh/profiles/node_modules/@deepseek-ai/dsh-typert-protocol",
-    "@deepseek-ai/dsh-typert-registry": "link:/Users/brianq/.dsh/profiles/node_modules/@deepseek-ai/dsh-typert-registry",
-    "@deepseek-ai/dsh-invariants": "link:/Users/brianq/.dsh/profiles/node_modules/@deepseek-ai/dsh-invariants",
-    "@deepseek-ai/schemastery": "link:/Users/brianq/.dsh/profiles/node_modules/@deepseek-ai/schemastery",
-    "@deepseek-ai/dsh-client-runtime": "link:/Users/brianq/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-runtime",
-    "@deepseek-ai/dsh-client-ui-slots": "link:/Users/brianq/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-slots",
-    "@deepseek-ai/dsh-client-ui-workspace": "link:/Users/brianq/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-workspace",
-    "@deepseek-ai/dsh-client-locale": "link:/Users/brianq/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-locale",
-    "@deepseek-ai/dsh-client-ui-primitives": "link:/Users/brianq/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-ui-primitives",
-    "@deepseek-ai/dsh-client-web-react": "link:/Users/brianq/.dsh/profiles/node_modules/@deepseek-ai/dsh-client-web-react",
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-typert-registry": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-invariants": "0.1.0-rc.6",
+    "@deepseek-ai/schemastery": "3.18.1",
+    "@deepseek-ai/dsh-client-runtime": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-workspace": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-locale": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-client-web-react": "0.1.0-rc.6",
     "@eslint/js": "^9.30.0",
     "@types/node": "^22.19.0",
     "@types/react": "^18.3.0",

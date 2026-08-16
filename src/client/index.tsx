@@ -1,45 +1,24 @@
 /**
- * dsh-github client plugin: the browser half of the local Git Changes panel.
- * It mounts the Git Remote namespace, registers the Workspace menu row, and
- * renders the selected repository's status and file diff in a side drawer.
+ * dsh-github client plugin: the browser half of the local Git Source Control
+ * panel. It mounts the Git Remote namespace, generates the panel action
+ * wrappers from the shared contract, registers the Workspace menu row, and
+ * renders the selected repository's Source Control drawer.
  */
 import { createRoot } from 'react-dom/client'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { DSH_GITHUB_REMOTE } from './remote.ts'
+import { DSH_GITHUB_INVOCATIONS } from '../contract.ts'
 import { NS, en, zh } from './locales.ts'
 import { GithubChangesPanel, type GithubPanelActions } from './panel.tsx'
 import { installLegacyWorkspaceMenu } from './legacy-menu.tsx'
-import { adoptPanelStyles } from './panel.tsx'
 import { adoptStyles } from './styles.ts'
-import type { GitDiff, GitDiffMode, GitRepositoryOverview, GitStatus } from '../types.ts'
 
 /** Required services: the Remote gateway, locale, and Workspace list. */
 export const inject = ['slots', 'remote', 'locale', 'workspaces']
 
-type RemoteError = { code: string; message: string; details: object }
-
 function resolveWorkspacePath(cwd: string, filePath: string): string {
   return filePath.startsWith('/') || /^[A-Za-z]:[/\\]/.test(filePath) || filePath.startsWith('\\\\') ? filePath : `${cwd.replace(/[/\\]+$/, '')}/${filePath.replace(/^[/\\]+/, '')}`
-}
-type RemoteResult<T> = { ok: true; value: T } | { ok: false; error: RemoteError }
-
-/** The mounted local Git Remote namespace. */
-interface DshGithubNamespaceFace {
-  getStatus: (path: string, signal?: AbortSignal) => Promise<RemoteResult<GitStatus>>
-  getDiff: (path: string, filePath: string, mode: GitDiffMode, signal?: AbortSignal) => Promise<RemoteResult<GitDiff>>
-  stage: (path: string, filePath: string, signal?: AbortSignal) => Promise<RemoteResult<GitStatus>>
-  unstage: (path: string, filePath: string, signal?: AbortSignal) => Promise<RemoteResult<GitStatus>>
-  stageAll: (path: string, signal?: AbortSignal) => Promise<RemoteResult<GitStatus>>
-  unstageAll: (path: string, signal?: AbortSignal) => Promise<RemoteResult<GitStatus>>
-  commit: (path: string, message: string, signal?: AbortSignal) => Promise<RemoteResult<GitStatus>>
-  push: (path: string, signal?: AbortSignal) => Promise<RemoteResult<GitStatus>>
-  fetch: (path: string, signal?: AbortSignal) => Promise<RemoteResult<GitStatus>>
-  pull: (path: string, signal?: AbortSignal) => Promise<RemoteResult<GitStatus>>
-  sync: (path: string, signal?: AbortSignal) => Promise<RemoteResult<GitStatus>>
-  checkoutBranch: (path: string, branch: string, remote: boolean, signal?: AbortSignal) => Promise<RemoteResult<GitStatus>>
-  createBranch: (path: string, branch: string, signal?: AbortSignal) => Promise<RemoteResult<GitStatus>>
-  getRepositoryOverview: (path: string, signal?: AbortSignal) => Promise<RemoteResult<GitRepositoryOverview>>
 }
 
 /** Mount a side drawer for one Workspace. */
@@ -52,7 +31,7 @@ function mountPanel(
   const mount = document.createElement('div')
   mount.className = 'dsh-github-panel-host'
   document.body.appendChild(mount)
-  adoptPanelStyles()
+  adoptStyles()
   const root = createRoot(mount)
   const dispose = (): void => { root.unmount(); mount.remove() }
   root.render(<GithubChangesPanel path={path} title={title} actions={actions} t={t} onClose={dispose} />)
@@ -61,87 +40,41 @@ function mountPanel(
 
 type GithubChangesPanelProps = Parameters<typeof GithubChangesPanel>[0]
 
-/** Compose the Workspace row and local Git Changes panel. @param ctx - client root context. */
+/** Compose the Workspace row and local Git Source Control panel. @param ctx - client root context. */
 export function apply(ctx: ClientContext): void {
   adoptStyles()
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-github: dictionaries')
 
-  let github: DshGithubNamespaceFace | undefined
+  let github: unknown
   let disposePanel: (() => void) | undefined
   const t = ctx.locale.bind(NS)
 
   ctx.effect(async () => {
     const dispose = await ctx.remote.$mount(DSH_GITHUB_REMOTE)
-    github = (ctx.reflect as unknown as { get(name: string): unknown }).get('remote.github') as DshGithubNamespaceFace | undefined
+    github = (ctx.reflect as unknown as { get(name: string): unknown }).get('remote.github')
     if (github === undefined) throw new Error('dsh-github: the github Remote namespace did not mount')
     return () => { github = undefined; void dispose() }
   }, 'dsh-github: remote')
 
-  const actions: GithubPanelActions = {
-    getStatus: (path, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.getStatus(path, signal)
-    },
-    getDiff: (path, filePath, mode, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.getDiff(path, filePath, mode, signal)
-    },
-    stage: (path, filePath, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.stage(path, filePath, signal)
-    },
-    unstage: (path, filePath, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.unstage(path, filePath, signal)
-    },
-    stageAll: (path, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.stageAll(path, signal)
-    },
-    unstageAll: (path, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.unstageAll(path, signal)
-    },
-    commit: (path, message, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.commit(path, message, signal)
-    },
-    push: (path, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.push(path, signal)
-    },
-    fetch: (path, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.fetch(path, signal)
-    },
-    pull: (path, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.pull(path, signal)
-    },
-    sync: (path, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.sync(path, signal)
-    },
-    checkoutBranch: (path, branch, remote, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.checkoutBranch(path, branch, remote, signal)
-    },
-    createBranch: (path, branch, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.createBranch(path, branch, signal)
-    },
-    getRepositoryOverview: (path, signal) => {
-      if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-      return github.getRepositoryOverview(path, signal)
-    },
-    openFile: async (root, filePath) => {
-      await ctx.workspaces.openPath(resolveWorkspacePath(root, filePath))
-    },
+  /** Build one action wrapper that delegates to the mounted namespace. */
+  const delegate = (method: string) => (...args: unknown[]): unknown => {
+    if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
+    const fn = (github as Record<string, unknown>)[method]
+    if (typeof fn !== 'function') return Promise.reject(new Error(`dsh-github: GitHub method "${method}" is not available`))
+    return (fn as (...callArgs: unknown[]) => unknown)(...args)
   }
+
+  // Generate every contract method wrapper from the shared descriptor list.
+  const actions: Record<string, unknown> = {}
+  for (const { method } of DSH_GITHUB_INVOCATIONS) actions[method] = delegate(method)
+  actions.openFile = async (root: string, filePath: string): Promise<void> => {
+    await ctx.workspaces.openPath(resolveWorkspacePath(root, filePath))
+  }
+  const panelActions = actions as unknown as GithubPanelActions
 
   const openChanges = (path: string, title: string): void => {
     disposePanel?.()
-    disposePanel = mountPanel(path, title, actions, t)
+    disposePanel = mountPanel(path, title, panelActions, t)
   }
 
   ctx.effect(() => installLegacyWorkspaceMenu({

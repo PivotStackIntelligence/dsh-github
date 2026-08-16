@@ -116,8 +116,13 @@ export function installLegacyWorkspaceMenu(options: LegacyWorkspaceMenuOptions):
     )
   }
 
-  const observer = new MutationObserver(() => {
+  const observer = new MutationObserver(records => {
     if (active?.menu !== undefined && !active.menu.isConnected) unmount()
+    const relevant = records.some(record => [...record.addedNodes].some(node => {
+      if (!(node instanceof Element)) return false
+      return node.matches('[role="menu"]') || node.querySelector('[role="menu"]') !== null
+    }))
+    if (!relevant) return
     mountIntoOpenMenu()
   })
   observer.observe(document.body, { childList: true, subtree: true })

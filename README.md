@@ -1,18 +1,22 @@
 # dsh-github
 
-A Source Control and GitHub repository panel for DeepSeek Harness.
+A Source Control and GitHub repository panel for DeepSeek Harness that mirrors the VS Code native Git Source Control view.
 
 ## Features
 
-- Shows the active workspace branch, upstream, ahead/behind counts, and changed files.
-- Groups staged, working-tree, untracked, and merge-conflict changes with bounded diff previews.
-- Opens changed files through the Harness workspace opener and can open changed files and the current commit on GitHub when the remote is detected.
-- Stages and unstages individual files or all changes through fixed-argument local `git` commands, including staging a resolved merge conflict.
-- Commits staged changes from the panel, including a `Cmd/Ctrl+Enter` shortcut and operation feedback; if push fails after commit, the panel reports that the commit already exists.
-- Pushes, fetches, fast-forward pulls, and synchronizes through the repository's configured Git remotes and credential helpers. When several remotes exist, the plugin requires Git to identify the branch remote or push remote instead of guessing.
-- Lists local branches and the current branch remote's tracking branches, checks them out, and creates local branches. Matching local and remote-tracking names are shown once.
-- Shows pull-request refs already fetched by local Git as links to their GitHub pages; it does not query GitHub for pull requests.
-- Derives GitHub repository, branch, and compare links from the configured fetch and push remotes, then opens those pages in the browser. The compare page is the handoff point for creating a pull request, including the common fork workflow.
+- **Repository header** — repository (workspace) name, current branch, ahead/behind counts, GitHub link, and refresh button.
+- **Commit bar** — multi-line commit message, `Amend` checkbox, `Commit` button with a dropdown (Commit / Commit & Push / Commit & Sync / Undo Last Commit), and a round Sync/Publish button with ↑n ↓n counts.
+- **Change groups** — STAGED CHANGES / CHANGES / MERGE CHANGES (untracked files live inside CHANGES), collapsible, with count badges and group actions (+ stage all / − unstage all / ↶ discard all). File status badges use VS Code colors: `A` green, `M` brown-yellow, `D` red, `R`/`C` blue, `U` green, `!` yellow.
+- **Diff viewer** — side-by-side and inline modes with line numbers and added/removed coloring; the file header shows old path → new path. Conflict files expose Accept Current / Accept Incoming / Accept Both.
+- **Discard with confirmation** — discard a single file or all changes through an inline confirmation dialog (never a bare `window.confirm`).
+- **Commits** — searchable history (message/author), short SHA + subject + author + relative date + refs badges; expand a commit for full details and per-file diffs, with Copy SHA, Checkout Commit, Create Branch, and Create Tag.
+- **Branches** — current branch highlighted; checkout, rename, delete, merge-into-current, and rebase-onto.
+- **Remotes** — fetch/push URLs per remote; fetch, fetch (prune), add, and remove.
+- **Tags** — list, create, push, and delete.
+- **Stashes** — list, apply, apply & drop, drop, and view diff.
+- **Merge / rebase state** — continue and abort an in-progress merge or rebase from the panel.
+- **Git output** — a collapsible section of recent git commands and their (redacted) output.
+- **Auto-refresh** — refreshes on open, every 3 seconds while the panel is open, and on window focus / visibility change; the lazy sections (commits, branches, remotes, tags, stashes) load on first expand and refresh with each status poll.
 
 The plugin uses the repository's normal local Git configuration, SSH keys, HTTPS credential helpers, and Git remotes. It does not call the GitHub API, store GitHub tokens, implement OAuth, depend on GitHub CLI, or expose arbitrary shell commands. GitHub links open the corresponding browser pages; the Compare page is the handoff for creating a pull request. Git writes require an explicit user action, and repository state is reloaded after each operation.
 
@@ -38,9 +42,11 @@ Restart the Web Harness after rebuilding the plugin. Open a workspace's overflow
 
 ## Development
 
+- Node.js `>= 22.19`
+- pnpm `>= 9`
+
 ```sh
-pnpm run typecheck
-pnpm run lint
-pnpm run test
-pnpm run build
+pnpm run check
 ```
+
+`pnpm run check` runs `typecheck`, `lint`, `test`, and `build`. CI runs the same command after `pnpm install --frozen-lockfile`.

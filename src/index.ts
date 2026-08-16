@@ -18,6 +18,10 @@ export interface Config {
   maxDiffBytes: number
   /** Maximum bytes read from an untracked file. */
   maxUntrackedBytes: number
+  /** Maximum commits returned by one history query. */
+  maxLogEntries: number
+  /** Maximum recorded command executions kept in the output buffer. */
+  maxOutputEntries: number
 }
 
 /** Configuration schema with bounded defaults. */
@@ -25,6 +29,8 @@ export const Config = z.object({
   maxFiles: z.number().step(1).min(1).max(1_000).default(200),
   maxDiffBytes: z.number().step(1).min(1_024).max(2_000_000).default(200_000),
   maxUntrackedBytes: z.number().step(1).min(1_024).max(2_000_000).default(100_000),
+  maxLogEntries: z.number().step(1).min(1).max(1_000).default(200),
+  maxOutputEntries: z.number().step(1).min(1).max(500).default(50),
 })
 
 /** Register the host Remote and strict Typert manifest. */
