@@ -5,17 +5,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { GithubChangesPanel, type GithubPanelActions } from '../src/client/panel.tsx'
 import { en, fmt, type DshGithubKey } from '../src/client/locales.ts'
 import type { GitCommitDetail, GitDiff, GitLog, GitOutput, GitRemoteList, GitRepositoryOverview, GitStashList, GitStatus, GitTagList } from '../src/types.ts'
-import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
 
 const t = (key: DshGithubKey, params?: Record<string, string>) => params === undefined ? en[key] : fmt(en[key], params)
 const ok = <T,>(value: T) => Promise.resolve({ ok: true as const, value })
-
-const workspaceId: WorkspaceId = 'ws-1' as WorkspaceId
-const workspaces: readonly WorkspaceView[] = [
-  { workspaceId, path: '/repo', title: 'repo', sessionIds: [], createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
-]
 
 const status: GitStatus = {
   root: '/repo', branch: 'main', upstream: 'origin/main', ahead: 1, behind: 2,
@@ -101,16 +95,16 @@ async function flush(): Promise<void> {
   await act(async () => { await new Promise(resolve => { setTimeout(resolve, 0) }) })
 }
 
-async function mountPanel(actions: GithubPanelActions, options: { workspaces?: readonly WorkspaceView[]; workspaceId?: WorkspaceId; onSelectWorkspace?: (id: WorkspaceId) => void } = {}) {
-  const onSelectWorkspace = options.onSelectWorkspace ?? vi.fn()
+async function mountPanel(actions: GithubPanelActions, options: { title?: string; onClose?: () => void } = {}) {
+  const onClose = options.onClose ?? vi.fn()
   const mount = document.createElement('div')
   document.body.appendChild(mount)
   const root = createRoot(mount)
   await act(async () => {
-    root.render(<GithubChangesPanel path="/repo" actions={actions} t={t} workspaces={options.workspaces ?? workspaces} workspaceId={options.workspaceId ?? workspaceId} onSelectWorkspace={onSelectWorkspace} />)
+    root.render(<GithubChangesPanel path="/repo" title={options.title ?? 'repo'} actions={actions} t={t} onClose={onClose} />)
   })
   await flush()
-  return { mount, root, onSelectWorkspace }
+  return { mount, root, onClose }
 }
 
 function changeGroup(mount: HTMLElement, title: string): HTMLElement {
@@ -180,16 +174,18 @@ describe('GithubChangesPanel', () => {
 
   it('opens ConfirmModal on discard and calls discard on confirm', async () => {
     const actions = makeActions()
-    const { mount } = await mountPanel(actions)
+    const onClose = vi.fn()
+    const { mount } = await mountPanel(actions, { onClose })
 
     await act(async () => { rowButton(changeRow(mount, 'changed.ts'), 'Discard Changes: changed.ts').click() })
     expect(document.querySelector('.dsh-github-modal')).not.toBeNull()
     expect(actions.discard).not.toHaveBeenCalled()
 
-    // Esc closes the confirm modal without discarding.
+    // Esc closes the confirm modal without discarding or closing the panel.
     await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
     expect(document.querySelector('.dsh-github-modal')).toBeNull()
     expect(actions.discard).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
 
     // Re-open and confirm.
     await act(async () => { rowButton(changeRow(mount, 'changed.ts'), 'Discard Changes: changed.ts').click() })
@@ -198,6 +194,15 @@ describe('GithubChangesPanel', () => {
     await act(async () => { confirmButton?.click() })
     await flush()
     expect(actions.discard).toHaveBeenCalledWith('/repo', 'changed.ts')
+  })
+
+  it('triggers onClose on Escape', async () => {
+    const actions = makeActions()
+    const onClose = vi.fn()
+    await mountPanel(actions, { onClose })
+
+    await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect(onClose).toHaveBeenCalled()
   })
 
   it('calls resolveConflict for Accept Current/Incoming/Both', async () => {
@@ -287,12 +292,12 @@ describe('GithubChangesPanel', () => {
     vi.useFakeTimers()
     try {
       const actions = makeActions()
-      const onSelectWorkspace = vi.fn()
+      const onClose = vi.fn()
       const mount = document.createElement('div')
       document.body.appendChild(mount)
       const root = createRoot(mount)
       await act(async () => {
-        root.render(<GithubChangesPanel path="/repo" actions={actions} t={t} workspaces={workspaces} workspaceId={workspaceId} onSelectWorkspace={onSelectWorkspace} />)
+        root.render(<GithubChangesPanel path="/repo" title="repo" actions={actions} t={t} onClose={onClose} />)
         await Promise.resolve()
         await Promise.resolve()
         await Promise.resolve()

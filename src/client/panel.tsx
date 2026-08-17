@@ -9,7 +9,6 @@ import type { GitBranch, GitCommitDetail, GitCommitFile, GitCommitSummary, GitCo
 import { ConfirmModal, type ConfirmField } from './confirm.tsx'
 import { InlineDiff, parseUnifiedDiff, SideBySideDiff } from './diff.tsx'
 import type { DshGithubKey } from './locales.ts'
-import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
 
 type RemoteResult<T> = { ok: true; value: T } | { ok: false; error: { message: string } }
 
@@ -146,13 +145,12 @@ function Section({ title, count, expanded, onToggle, actions, children }: {
 }
 
 /** Render the local Source Control and pull-request panel. */
-export function GithubChangesPanel({ path, actions, t, workspaces, workspaceId, onSelectWorkspace }: {
+export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   path: string
+  title: string
   actions: GithubPanelActions
   t: (key: DshGithubKey, params?: Record<string, string>) => string
-  workspaces: readonly WorkspaceView[]
-  workspaceId: WorkspaceId
-  onSelectWorkspace: (id: WorkspaceId) => void
+  onClose: () => void
 }) {
   const [status, setStatus] = useState<GitStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -507,7 +505,7 @@ export function GithubChangesPanel({ path, actions, t, workspaces, workspaceId, 
     {entry.output ? <pre className="dsh-github-output-text">{entry.output}</pre> : null}
   </div>
 
-  // Mount: initial load, 3s polling while visible, and window/visibility refresh.
+  // Mount: initial load, 3s polling while visible, window/visibility refresh, and Esc close.
   useEffect(() => {
     refresh()
     const interval = window.setInterval(() => {
@@ -515,17 +513,22 @@ export function GithubChangesPanel({ path, actions, t, workspaces, workspaceId, 
     }, 3000)
     const onFocus = (): void => { refreshRef.current(false) }
     const onVisibility = (): void => { if (document.visibilityState === 'visible') refreshRef.current(false) }
+    const onKeyDown = (event: globalThis.KeyboardEvent): void => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
       window.clearInterval(interval)
+      document.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVisibility)
       statusRequest.current?.controller.abort()
       for (const request of sectionRequests.current.values()) request.controller.abort()
       diffRequest.current?.controller.abort()
     }
-  }, [path])
+  }, [path, onClose])
 
   // Lazy-load a section on first expand; commits reload (debounced) on query change.
   useEffect(() => { if (branchesExpanded) loadOverview() }, [branchesExpanded, path])
@@ -586,15 +589,11 @@ export function GithubChangesPanel({ path, actions, t, workspaces, workspaceId, 
 
   return <section className="dsh-github-panel" role="complementary" aria-label={t('panel.title')}>
       <header className="dsh-github-panel-header">
-        <div className="dsh-github-workspace-picker">
-          <select value={workspaceId} onChange={event => onSelectWorkspace(event.target.value as WorkspaceId)} aria-label={t('panel.workspacePicker')} title={t('panel.workspacePicker')}>
-            {workspaces.map(workspace => <option key={workspace.workspaceId} value={workspace.workspaceId}>{workspace.title}</option>)}
-          </select>
-          <small>{status?.root ?? path}</small>
-        </div>
+        <div><strong>{title}</strong><small>{status?.root ?? path}</small></div>
         <div className="dsh-github-panel-actions">
           <button type="button" disabled={loading || operation !== null} onClick={() => refresh()} aria-label={t('panel.refresh')} title={t('panel.refresh')}>↻</button>
           {status?.githubUrl ? <button type="button" onClick={() => openUrl(status.githubUrl!)}>{t('panel.openGithub')}</button> : null}
+          <button type="button" onClick={onClose} aria-label={t('panel.close')} title={t('panel.close')}>×</button>
         </div>
       </header>
 

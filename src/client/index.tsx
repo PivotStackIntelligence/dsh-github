@@ -1,8 +1,9 @@
 /**
  * dsh-github client plugin: the browser half of the local Git Source Control
  * panel. It mounts the Git Remote namespace, generates the panel action
- * wrappers from the shared contract, and registers one Source Control tab
- * into the session conversation view ring.
+ * wrappers from the shared contract, and registers (1) a session-header
+ * toggle button and (2) a right-edge slide-in overlay panel bound to the
+ * current session's workspace.
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
@@ -10,7 +11,7 @@ import { DSH_GITHUB_REMOTE } from './remote.ts'
 import { DSH_GITHUB_INVOCATIONS } from '../contract.ts'
 import { NS, en, zh } from './locales.ts'
 import type { GithubPanelActions } from './panel.tsx'
-import { SourceControlView, type SourceControlViewSlotProps } from './view.tsx'
+import { SourceControlOverlayPanel, SourceControlToggle } from './source-control.tsx'
 import { adoptStyles } from './styles.ts'
 
 /** Required services: the Remote gateway, locale, Workspace list, and slots. */
@@ -20,7 +21,7 @@ function resolveWorkspacePath(cwd: string, filePath: string): string {
   return filePath.startsWith('/') || /^[A-Za-z]:[/\\]/.test(filePath) || filePath.startsWith('\\\\') ? filePath : `${cwd.replace(/[/\\]+$/, '')}/${filePath.replace(/^[/\\]+/, '')}`
 }
 
-/** Compose the local Git Source Control view tab. @param ctx - client root context. */
+/** Compose the local Git Source Control surfaces. @param ctx - client root context. */
 export function apply(ctx: ClientContext): void {
   adoptStyles()
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-github: dictionaries')
@@ -51,12 +52,23 @@ export function apply(ctx: ClientContext): void {
   }
   const panelActions = actions as unknown as GithubPanelActions
 
-  // Register the Source Control tab into the session conversation view ring.
-  ctx.slots.inject('conversation.view', () => ctx.slots.register({
-    name: 'conversation.view',
+  // ① Session-header toggle button.
+  ctx.slots.inject('conversation.session.header.actions', () => ctx.slots.register({
+    name: 'conversation.session.header.actions',
     id: 'source-control',
-    order: 20,
-    label: () => t('view.label'),
-    inject: () => ({ actions: panelActions, t }),
-  }, (props: SourceControlViewSlotProps) => <SourceControlView actions={props.actions} t={props.t} useWorkspaces={props.useWorkspaces} />))
+    order: 30,
+    locale: NS,
+    label: () => t('panel.sourceControl'),
+    inject: () => ({}),
+  }, props => <SourceControlToggle t={props.t} />))
+
+  // ② Right-edge slide-in overlay panel (click-through layer; entry opts in).
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay',
+    id: 'source-control',
+    order: 0,
+    locale: NS,
+    label: () => t('panel.sourceControl'),
+    inject: () => ({ actions: panelActions }),
+  }, props => <SourceControlOverlayPanel actions={props.actions} t={props.t} useSessions={props.useSessions} />))
 }

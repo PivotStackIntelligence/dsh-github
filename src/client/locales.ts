@@ -2,8 +2,7 @@
 export const zh = {
   'menu.viewChanges': '查看 Source Control', 'menu.viewChanges.aria': '查看 {name} 的 Source Control',
   'panel.title': 'Source Control', 'panel.refresh': '刷新', 'panel.openGithub': '打开 GitHub', 'panel.close': '关闭',
-  'view.label': 'Source Control',
-  'panel.workspacePicker': '选择工作区', 'panel.noWorkspace': '没有工作区。',
+  'panel.openSourceControl': '打开 Source Control', 'panel.closeSourceControl': '关闭 Source Control', 'panel.noSessionCwd': '当前会话没有工作区路径。',
   'panel.sourceControl': 'Source Control', 'panel.repository': '仓库', 'panel.loading': '正在读取 Git 状态…',
   'panel.loadingDiff': '正在读取文件差异…', 'panel.loadingRepository': '正在读取分支和仓库链接…',
   'panel.noUpstream': '未设置上游分支', 'panel.pushRemote': '推送至 {name}', 'panel.commitPlaceholder': '提交消息', 'panel.commit': '提交',
@@ -101,8 +100,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' { interface LocaleNamespaceMap
 export const en = {
   'menu.viewChanges': 'View Source Control', 'menu.viewChanges.aria': 'View Source Control for {name}',
   'panel.title': 'Source Control', 'panel.refresh': 'Refresh', 'panel.openGithub': 'Open GitHub', 'panel.close': 'Close',
-  'view.label': 'Source Control',
-  'panel.workspacePicker': 'Select workspace', 'panel.noWorkspace': 'No workspace.',
+  'panel.openSourceControl': 'Open Source Control', 'panel.closeSourceControl': 'Close Source Control', 'panel.noSessionCwd': 'The current session has no workspace path.',
   'panel.sourceControl': 'Source Control', 'panel.repository': 'Repository', 'panel.loading': 'Reading Git status…',
   'panel.loadingDiff': 'Reading file diff…', 'panel.loadingRepository': 'Reading branches and repository links…',
   'panel.noUpstream': 'No upstream branch', 'panel.pushRemote': 'Push: {name}', 'panel.commitPlaceholder': 'Commit message', 'panel.commit': 'Commit',
