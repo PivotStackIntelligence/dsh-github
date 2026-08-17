@@ -5,11 +5,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { GithubChangesPanel, type GithubPanelActions } from '../src/client/panel.tsx'
 import { en, fmt, type DshGithubKey } from '../src/client/locales.ts'
 import type { GitCommitDetail, GitDiff, GitLog, GitOutput, GitRemoteList, GitRepositoryOverview, GitStashList, GitStatus, GitTagList } from '../src/types.ts'
+import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
 
 const t = (key: DshGithubKey, params?: Record<string, string>) => params === undefined ? en[key] : fmt(en[key], params)
 const ok = <T,>(value: T) => Promise.resolve({ ok: true as const, value })
+
+const workspaceId: WorkspaceId = 'ws-1' as WorkspaceId
+const workspaces: readonly WorkspaceView[] = [
+  { workspaceId, path: '/repo', title: 'repo', sessionIds: [], createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' },
+]
 
 const status: GitStatus = {
   root: '/repo', branch: 'main', upstream: 'origin/main', ahead: 1, behind: 2,
@@ -95,15 +101,17 @@ async function flush(): Promise<void> {
   await act(async () => { await new Promise(resolve => { setTimeout(resolve, 0) }) })
 }
 
-async function mountPanel(actions: GithubPanelActions, onClose = vi.fn()) {
+async function mountPanel(actions: GithubPanelActions, options: { onCollapse?: () => void; workspaces?: readonly WorkspaceView[]; workspaceId?: WorkspaceId; onSelectWorkspace?: (id: WorkspaceId) => void } = {}) {
+  const onCollapse = options.onCollapse ?? vi.fn()
+  const onSelectWorkspace = options.onSelectWorkspace ?? vi.fn()
   const mount = document.createElement('div')
   document.body.appendChild(mount)
   const root = createRoot(mount)
   await act(async () => {
-    root.render(<GithubChangesPanel path="/repo" title="repo" actions={actions} t={t} onClose={onClose} />)
+    root.render(<GithubChangesPanel path="/repo" actions={actions} t={t} onCollapse={onCollapse} workspaces={options.workspaces ?? workspaces} workspaceId={options.workspaceId ?? workspaceId} onSelectWorkspace={onSelectWorkspace} />)
   })
   await flush()
-  return { mount, root, onClose }
+  return { mount, root, onCollapse, onSelectWorkspace }
 }
 
 function changeGroup(mount: HTMLElement, title: string): HTMLElement {
@@ -273,12 +281,13 @@ describe('GithubChangesPanel', () => {
     vi.useFakeTimers()
     try {
       const actions = makeActions()
-      const onClose = vi.fn()
+      const onCollapse = vi.fn()
+      const onSelectWorkspace = vi.fn()
       const mount = document.createElement('div')
       document.body.appendChild(mount)
       const root = createRoot(mount)
       await act(async () => {
-        root.render(<GithubChangesPanel path="/repo" title="repo" actions={actions} t={t} onClose={onClose} />)
+        root.render(<GithubChangesPanel path="/repo" actions={actions} t={t} onCollapse={onCollapse} workspaces={workspaces} workspaceId={workspaceId} onSelectWorkspace={onSelectWorkspace} />)
         await Promise.resolve()
         await Promise.resolve()
         await Promise.resolve()
@@ -299,21 +308,13 @@ describe('GithubChangesPanel', () => {
     }
   })
 
-  it('closes on Escape and traps focus', async () => {
+  it('triggers onCollapse on Escape', async () => {
     const actions = makeActions()
-    const { mount, onClose } = await mountPanel(actions)
-
-    const focusable = [...mount.querySelectorAll<HTMLElement>('button:not(:disabled), textarea:not(:disabled), input:not(:disabled), a[href]')]
-    const first = focusable[0]
-    const last = focusable[focusable.length - 1]
-    expect(first).toBeDefined()
-    expect(last).toBeDefined()
-    last?.focus()
-    await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true })) })
-    expect(document.activeElement).toBe(first)
+    const onCollapse = vi.fn()
+    await mountPanel(actions, { onCollapse })
 
     await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
-    expect(onClose).toHaveBeenCalled()
+    expect(onCollapse).toHaveBeenCalled()
   })
 
   it('renders a side-by-side diff with added and removed line cells', async () => {

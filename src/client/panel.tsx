@@ -9,6 +9,7 @@ import type { GitBranch, GitCommitDetail, GitCommitFile, GitCommitSummary, GitCo
 import { ConfirmModal, type ConfirmField } from './confirm.tsx'
 import { InlineDiff, parseUnifiedDiff, SideBySideDiff } from './diff.tsx'
 import type { DshGithubKey } from './locales.ts'
+import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
 
 type RemoteResult<T> = { ok: true; value: T } | { ok: false; error: { message: string } }
 
@@ -145,12 +146,14 @@ function Section({ title, count, expanded, onToggle, actions, children }: {
 }
 
 /** Render the local Source Control and pull-request panel. */
-export function GithubChangesPanel({ path, title, actions, t, onClose }: {
+export function GithubChangesPanel({ path, actions, t, onCollapse, workspaces, workspaceId, onSelectWorkspace }: {
   path: string
-  title: string
   actions: GithubPanelActions
   t: (key: DshGithubKey, params?: Record<string, string>) => string
-  onClose: () => void
+  onCollapse: () => void
+  workspaces: readonly WorkspaceView[]
+  workspaceId: WorkspaceId
+  onSelectWorkspace: (id: WorkspaceId) => void
 }) {
   const [status, setStatus] = useState<GitStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -190,9 +193,6 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   const sectionRequests = useRef<Map<string, { id: number; controller: AbortController }>>(new Map())
   const diffRequest = useRef<{ id: number; controller: AbortController } | null>(null)
   const requestId = useRef(0)
-  const panelRef = useRef<HTMLElement>(null)
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
-  const previousFocus = useRef<HTMLElement | null>(null)
   const operationRef = useRef<Operation | null>(null)
   const confirmRef = useRef<ConfirmRequest | null>(null)
   const commitMenuRef = useRef<HTMLDivElement>(null)
@@ -510,30 +510,18 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
     {entry.output ? <pre className="dsh-github-output-text">{entry.output}</pre> : null}
   </div>
 
-  // Mount: initial load, focus restore, 3s polling, window/visibility refresh, keyboard trap.
+  // Mount: initial load, 3s polling while visible, and window/visibility refresh.
   useEffect(() => {
-    previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     refresh()
-    closeButtonRef.current?.focus()
     const interval = window.setInterval(() => {
       if (!document.hidden && operationRef.current === null) refreshRef.current(false)
     }, 3000)
     const onFocus = (): void => { refreshRef.current(false) }
     const onVisibility = (): void => { if (document.visibilityState === 'visible') refreshRef.current(false) }
     const onKeyDown = (event: globalThis.KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        if (confirmRef.current !== null) { setConfirm(null); return }
-        onClose()
-        return
-      }
-      if (event.key !== 'Tab' || confirmRef.current !== null || panelRef.current === null) return
-      const focusable = [...panelRef.current.querySelectorAll<HTMLElement>('button:not(:disabled), textarea:not(:disabled), input:not(:disabled), a[href]')]
-      if (focusable.length === 0) return
-      const first = focusable[0]!
-      const last = focusable[focusable.length - 1]!
-      const active = document.activeElement
-      if (event.shiftKey && active === first) { event.preventDefault(); last.focus() }
-      else if (!event.shiftKey && active === last) { event.preventDefault(); first.focus() }
+      if (event.key !== 'Escape') return
+      if (confirmRef.current !== null) { setConfirm(null); return }
+      onCollapse()
     }
     document.addEventListener('keydown', onKeyDown)
     window.addEventListener('focus', onFocus)
@@ -546,9 +534,8 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
       statusRequest.current?.controller.abort()
       for (const request of sectionRequests.current.values()) request.controller.abort()
       diffRequest.current?.controller.abort()
-      previousFocus.current?.focus()
     }
-  }, [path, onClose])
+  }, [path, onCollapse])
 
   // Lazy-load a section on first expand; commits reload (debounced) on query change.
   useEffect(() => { if (branchesExpanded) loadOverview() }, [branchesExpanded, path])
@@ -607,15 +594,18 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
   })()
   const operationLabel = operation === null ? null : t(`panel.operation.${operation}`)
 
-  return <div className="dsh-github-panel-root" role="dialog" aria-modal="true" aria-label={t('panel.title')}>
-    <div className="dsh-github-panel-mask" aria-hidden="true" onClick={onClose} />
-    <section ref={panelRef} className="dsh-github-panel" tabIndex={-1}>
+  return <section className="dsh-github-panel" role="complementary" aria-label={t('panel.title')}>
       <header className="dsh-github-panel-header">
-        <div><strong>{title}</strong><small>{status?.root ?? path}</small></div>
+        <div className="dsh-github-workspace-picker">
+          <select value={workspaceId} onChange={event => onSelectWorkspace(event.target.value as WorkspaceId)} aria-label={t('panel.workspacePicker')} title={t('panel.workspacePicker')}>
+            {workspaces.map(workspace => <option key={workspace.workspaceId} value={workspace.workspaceId}>{workspace.title}</option>)}
+          </select>
+          <small>{status?.root ?? path}</small>
+        </div>
         <div className="dsh-github-panel-actions">
           <button type="button" disabled={loading || operation !== null} onClick={() => refresh()} aria-label={t('panel.refresh')} title={t('panel.refresh')}>↻</button>
           {status?.githubUrl ? <button type="button" onClick={() => openUrl(status.githubUrl!)}>{t('panel.openGithub')}</button> : null}
-          <button ref={closeButtonRef} type="button" onClick={onClose} aria-label={t('panel.close')} title={t('panel.close')}>×</button>
+          <button type="button" onClick={onCollapse} aria-label={t('panel.collapse')} title={t('panel.collapse')}>«</button>
         </div>
       </header>
 
@@ -727,6 +717,5 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
       </div> : null}
 
       {confirm !== null ? <ConfirmModal title={t('panel.confirm.title')} message={confirm.message} detail={confirm.detail} fields={confirm.fields} confirmLabel={t('panel.confirm.confirm')} cancelLabel={t('panel.confirm.cancel')} danger={confirm.danger} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} /> : null}
-    </section>
-  </div>
+  </section>
 }

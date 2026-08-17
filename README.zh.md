@@ -4,7 +4,8 @@
 
 ## 功能
 
-- **仓库头部** — 仓库（workspace）名、当前分支、ahead/behind 数量、GitHub 链接和刷新按钮。
+- **常驻侧栏** — 页面右缘 40px 常驻 Source Control 窄条，点击展开/收起为 `min(980px, 96vw)` 的侧栏；`Esc`/`«` 收起，展开态与选中工作区持久化到 `localStorage`。
+- **仓库头部** — 工作区切换下拉（默认 recentWorkspaceId）、仓库（workspace）名、当前分支、ahead/behind 数量、GitHub 链接和刷新按钮。
 - **提交栏** — 多行 commit message、`Amend` 复选框、`Commit` 主按钮及下拉菜单（Commit / Commit & Push / Commit & Sync / Undo Last Commit），以及带 ↑n ↓n 计数的圆形 Sync/Publish 按钮。
 - **改动分组** — STAGED CHANGES / CHANGES / MERGE CHANGES（未跟踪文件并入 CHANGES），可折叠、带数量 badge，组级动作（+ 全部暂存 / − 全部取消暂存 / ↶ 全部丢弃）。文件状态 badge 颜色对齐 VS Code：`A` 绿、`M` 棕黄、`D` 红、`R`/`C` 蓝、`U` 绿、`!` 黄。
 - **Diff 查看器** — side-by-side 与 inline 两种模式，带行号和增删着色；文件头显示旧路径 → 新路径。冲突文件提供 Accept Current / Accept Incoming / Accept Both。
@@ -16,7 +17,7 @@
 - **Stashes** — 列表、apply、apply & drop、drop、查看 diff。
 - **Merge / Rebase 状态** — 从面板继续或中止进行中的 merge / rebase。
 - **Git 输出** — 可折叠区段，展示最近 git 命令及其（脱敏后）输出。
-- **自动刷新** — 打开即刷新，面板打开期间每 3 秒轮询一次，窗口 focus / visibilitychange 时立即刷新；懒加载区段（commits、branches、remotes、tags、stashes）首次展开时加载，之后随每次 status 刷新。
+- **自动刷新** — 展开即刷新，展开期间每 3 秒轮询一次（收起时停止），窗口 focus / visibilitychange 时立即刷新；懒加载区段（commits、branches、remotes、tags、stashes）首次展开时加载，之后随每次 status 刷新。
 
 插件使用仓库现有的本地 Git 配置、SSH 密钥、HTTPS credential helper 和 Git remote。不调用 GitHub API、不保存 GitHub token、不实现 OAuth、不依赖 GitHub CLI，也不暴露任意 shell 命令。GitHub 链接只打开对应的浏览器页面；Compare 页面是创建 pull request 的交接入口。Git 写操作需要用户明确触发，并在完成后重新读取仓库状态。
 
@@ -38,7 +39,7 @@ pnpm run build
 dsh plugin --profile web add .
 ```
 
-重新构建插件后需要重启 Web Harness。在 Workspace 的更多菜单中选择 **查看 Source Control**。
+重新构建插件后需要重启 Web Harness。页面右缘会出现常驻 Source Control 窄条，点击展开侧栏，再用侧栏顶部的下拉切换工作区。
 
 ## 开发
 

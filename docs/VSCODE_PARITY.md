@@ -3,15 +3,16 @@
 本文件是本次改造的**唯一权威产品规格**。所有实现 agent 必须以此文件 + 已经定稿的共享契约
 （`src/types.ts`、`src/contract.ts`、`src/typert.ts`、`src/client/remote.ts`、`src/index.ts`）为准。
 
-目标：在 DeepSeek Harness Web 的右侧抽屉里，**在形态与功能上完全模拟 VS Code 原生 Git 扩展的
+目标：在 DeepSeek Harness Web 页面右侧的**常驻 Source Control Side Bar**里，**在形态与功能上完全模拟 VS Code 原生 Git 扩展的
 Source Control 视图**，同时保留本插件的既有边界（本地 Git + GitHub 浏览器交接，无 GitHub API、无 token）。
 
 ## 1. 产品形态
 
 ### 1.1 总体布局（替代现在的 Changes / Repository 双 tab）
 
-单个 SCM 抽屉（右侧 drawer），内部左右分栏：
+常驻右侧 Source Control Side Bar：**40px 常驻 rail**，点击展开成 **min(980px, 96vw)** 的 SCM 侧栏，`Esc`/`«` 收起；展开态与选中工作区持久化到 localStorage。侧栏内部左右分栏：
 
+- 侧栏头部：工作区切换下拉（默认 `recentWorkspaceId`）。
 - 左侧栏（VS Code SCM 侧栏的等价物），自上而下：
   1. **仓库头部**：仓库名（workspace 名）、当前分支、ahead/behind、GitHub 链接按钮、刷新按钮。
   2. **Commit 消息输入区**：多行 textarea + `Amend` 复选框 + `Commit` 主按钮 + `⌄` 下拉
@@ -27,7 +28,7 @@ Source Control 视图**，同时保留本插件的既有边界（本地 Git + Gi
   9. **GIT OUTPUT** 可折叠区（底部）：最近 git 命令及其输出（脱敏后）。
 - 右侧 = **diff 查看器**：默认 side-by-side（左右两栏 + 行号 + 增删着色），可切换 inline 模式；
   文件头显示旧路径 → 新路径；冲突文件在 diff 头上提供 Accept Current / Accept Incoming / Accept Both。
-- 抽屉打开即自动刷新；**打开期间每 3 秒轮询一次 getStatus**（面板隐藏/关闭时停止）；窗口 focus / visibilitychange 立即刷新。
+- 侧栏展开即自动刷新；**展开期间每 3 秒轮询一次 getStatus**（侧栏收起时停止）；窗口 focus / visibilitychange 立即刷新。
 
 区段 4–8 采用**懒加载**：区段首次展开时才请求对应数据，之后随每次 status 刷新一并刷新（已展开的区段）。
 
@@ -138,7 +139,7 @@ mergeState 检测：Host 在 `getStatus` 里通过 `git rev-parse --git-path` �
 5. **maxBuffer 上限**：`Math.max(64*1024, maxFiles * 8 * 1024 * 2)`；buffer 溢出映射为友好错误（`dsh-github: too many changed files to list, raise maxFiles`）。
 6. **凭据脱敏加宽**：错误信息里 `https?://` 之后到 `@` 的整段（无论是否含 `:`）统一替换为 `[credentials]@`；新增输出 buffer 同样脱敏。
 7. **符号链接防护**：`readBoundedUntrackedFile` 前用 `realpath` 校验解析后路径仍在 root 内。
-8. **MutationObserver 收窄**：`legacy-menu.tsx` 回调先检查 mutation addedNodes 中是否含 `[role="menu"]` 节点再扫描（该适配器保留，直到上游提供正式 slot）。
+8. **MutationObserver 收窄**：`legacy-menu.tsx` 的 menu 扫描适配已随 v0.2 删除（入口改为常驻右侧 Side Bar），该条不再适用。
 9. **client actions 生成**：`src/client/index.tsx` 用 contract 方法名列表生成 actions 包装（消除 14 段重复代码），保持 `GithubPanelActions` 面与契约一致。
 10. **打包/工程**：`package.json` 加 `"prepublishOnly": "pnpm run check"`；`dsh.plugin.json` 的 contributes 填真实贡献；lockfile 里 `/Users/brianq` 绝对路径问题由 docs/打包 agent 处理（优先改用 registry 版本 devDeps 并重新生成 lockfile，若 registry 无对应版本则保留 link: 并在 README 说明本地开发要求 + CI 用发布版本）；新增 GitHub Actions `ci.yml`（install + pnpm run check）。
 
