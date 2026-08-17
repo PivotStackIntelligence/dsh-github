@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
+import { useSyncExternalStore } from 'react'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { SourceControlSidebar } from '../src/client/sidebar.tsx'
+import { SourceControlView } from '../src/client/view.tsx'
 import type { GithubPanelActions } from '../src/client/panel.tsx'
 import { en, fmt, type DshGithubKey } from '../src/client/locales.ts'
-import type { ObservableSnapshot, WorkspaceId, WorkspaceListState, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
+import type { WorkspaceId, WorkspaceListState, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
 import type { GitCommitDetail, GitDiff, GitLog, GitOutput, GitRemoteList, GitRepositoryOverview, GitStashList, GitStatus, GitTagList } from '../src/types.ts'
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
@@ -13,7 +15,6 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
 const t = (key: DshGithubKey, params?: Record<string, string>) => params === undefined ? en[key] : fmt(en[key], params)
 const ok = <T,>(value: T) => Promise.resolve({ ok: true as const, value })
 
-const EXPANDED_KEY = 'dsh-github.sidebar.expanded'
 const WORKSPACE_KEY = 'dsh-github.sidebar.workspaceId'
 
 const status: GitStatus = {
@@ -105,8 +106,10 @@ function listState(items: WorkspaceView[], recentWorkspaceId?: WorkspaceId): Wor
   }
 }
 
-/** A writable test double of the workspaces ObservableSnapshot. */
-interface ListMock extends ObservableSnapshot<WorkspaceListState> {
+/** A writable test double of the workspaces store. */
+interface ListMock {
+  getSnapshot(): WorkspaceListState
+  subscribe(fn: () => void): () => void
   setState(next: WorkspaceListState): void
 }
 
@@ -120,15 +123,26 @@ function makeList(initial: WorkspaceListState): ListMock {
   }
 }
 
+/** A fake useWorkspaces hook backed by the ListMock, re-rendering on subscribe. */
+function makeUseWorkspaces(list: ListMock): SnapshotSelectorHook<WorkspaceListState> {
+  const subscribe = (onStoreChange: () => void) => list.subscribe(onStoreChange)
+  const getSnapshot = () => list.getSnapshot()
+  return <S,>(selector: (state: WorkspaceListState) => S): S => {
+    const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+    return selector(snapshot)
+  }
+}
+
 async function flush(): Promise<void> {
   await act(async () => { await new Promise(resolve => { setTimeout(resolve, 0) }) })
 }
 
-async function mountSidebar(list: ObservableSnapshot<WorkspaceListState>, actions: GithubPanelActions) {
+async function mountView(list: ListMock, actions: GithubPanelActions) {
   const mount = document.createElement('div')
   document.body.appendChild(mount)
   const root = createRoot(mount)
-  await act(async () => { root.render(<SourceControlSidebar actions={actions} t={t} list={list} />) })
+  const useWorkspaces = makeUseWorkspaces(list)
+  await act(async () => { root.render(<SourceControlView actions={actions} t={t} useWorkspaces={useWorkspaces} />) })
   await flush()
   return { mount, root }
 }
@@ -155,43 +169,29 @@ function createStorage(): Storage {
 beforeEach(() => { vi.stubGlobal('localStorage', createStorage()) })
 afterEach(() => { document.body.replaceChildren(); vi.unstubAllGlobals() })
 
-describe('SourceControlSidebar', () => {
-  it('renders a persistent rail that expands into the panel for the default workspace', async () => {
-    const list = makeList(listState([ws('ws-1', '/p1', 'one'), ws('ws-2', '/p2', 'two')]))
+describe('SourceControlView', () => {
+  it('mounts the panel for the first workspace by default', async () => {
+    const list = makeList(listState([ws('ws-1', '/p1'), ws('ws-2', '/p2')]))
     const actions = makeActions()
-    const { mount } = await mountSidebar(list, actions)
-
-    const rail = mount.querySelector<HTMLButtonElement>('.dsh-github-sidebar-rail-btn')
-    expect(rail).not.toBeNull()
-    expect(rail?.getAttribute('aria-expanded')).toBe('false')
-    expect(mount.querySelector('.dsh-github-panel')).toBeNull()
-
-    await act(async () => { rail?.click() })
-    await flush()
+    const { mount } = await mountView(list, actions)
 
     expect(mount.querySelector('.dsh-github-panel')).not.toBeNull()
     expect(actions.getStatus).toHaveBeenCalledWith('/p1', expect.any(AbortSignal))
   })
 
-  it('prefers the recent workspace when nothing is persisted', async () => {
+  it('prefers the recent workspace over the first item', async () => {
     const list = makeList(listState([ws('ws-1', '/p1'), ws('ws-2', '/p2')], 'ws-2' as WorkspaceId))
     const actions = makeActions()
-    const { mount } = await mountSidebar(list, actions)
-
-    await act(async () => { mount.querySelector<HTMLButtonElement>('.dsh-github-sidebar-rail-btn')?.click() })
-    await flush()
+    await mountView(list, actions)
 
     expect(actions.getStatus).toHaveBeenCalledWith('/p2', expect.any(AbortSignal))
   })
 
-  it('prefers the persisted workspace id over the recent workspace', async () => {
+  it('prefers the persisted workspace id over recent and first', async () => {
     localStorage.setItem(WORKSPACE_KEY, 'ws-1')
     const list = makeList(listState([ws('ws-1', '/p1'), ws('ws-2', '/p2')], 'ws-2' as WorkspaceId))
     const actions = makeActions()
-    const { mount } = await mountSidebar(list, actions)
-
-    await act(async () => { mount.querySelector<HTMLButtonElement>('.dsh-github-sidebar-rail-btn')?.click() })
-    await flush()
+    await mountView(list, actions)
 
     expect(actions.getStatus).toHaveBeenCalledWith('/p1', expect.any(AbortSignal))
   })
@@ -199,100 +199,48 @@ describe('SourceControlSidebar', () => {
   it('shows the no-workspace message when the list is empty', async () => {
     const list = makeList(listState([]))
     const actions = makeActions()
-    const { mount } = await mountSidebar(list, actions)
+    const { mount } = await mountView(list, actions)
 
-    await act(async () => { mount.querySelector<HTMLButtonElement>('.dsh-github-sidebar-rail-btn')?.click() })
-    await flush()
-
-    expect(mount.querySelector('.dsh-github-sidebar-empty')).not.toBeNull()
+    expect(mount.querySelector('.dsh-github-view-empty')).not.toBeNull()
     expect(mount.textContent).toContain('No workspace.')
     expect(mount.querySelector('.dsh-github-panel')).toBeNull()
   })
 
-  it('collapses on the panel collapse button and unmounts the panel', async () => {
-    const list = makeList(listState([ws('ws-1', '/p1')]))
-    const actions = makeActions()
-    const { mount } = await mountSidebar(list, actions)
-
-    await act(async () => { mount.querySelector<HTMLButtonElement>('.dsh-github-sidebar-rail-btn')?.click() })
-    await flush()
-    expect(mount.querySelector('.dsh-github-panel')).not.toBeNull()
-
-    await act(async () => { mount.querySelector<HTMLButtonElement>('button[aria-label="Collapse"]')?.click() })
-    await flush()
-    expect(mount.querySelector('.dsh-github-panel')).toBeNull()
-    expect(mount.querySelector('.dsh-github-sidebar-rail-btn')).not.toBeNull()
-  })
-
-  it('collapses on Escape and unmounts the panel', async () => {
-    const list = makeList(listState([ws('ws-1', '/p1')]))
-    const actions = makeActions()
-    const { mount } = await mountSidebar(list, actions)
-
-    await act(async () => { mount.querySelector<HTMLButtonElement>('.dsh-github-sidebar-rail-btn')?.click() })
-    await flush()
-
-    await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
-    await flush()
-    expect(mount.querySelector('.dsh-github-panel')).toBeNull()
-  })
-
-  it('persists expanded state and the selected workspace id to localStorage', async () => {
+  it('persists the selected workspace id when switching', async () => {
     const list = makeList(listState([ws('ws-1', '/p1'), ws('ws-2', '/p2')]))
     const actions = makeActions()
-    const { mount } = await mountSidebar(list, actions)
-
-    expect(localStorage.getItem(EXPANDED_KEY)).toBeNull()
-    await act(async () => { mount.querySelector<HTMLButtonElement>('.dsh-github-sidebar-rail-btn')?.click() })
-    await flush()
-    expect(localStorage.getItem(EXPANDED_KEY)).toBe('1')
+    const { mount } = await mountView(list, actions)
 
     const select = mount.querySelector<HTMLSelectElement>('.dsh-github-workspace-picker select')
     expect(select).not.toBeNull()
     await act(async () => { setSelectValue(select!, 'ws-2') })
     await flush()
-    expect(localStorage.getItem(WORKSPACE_KEY)).toBe('ws-2')
 
-    await act(async () => { mount.querySelector<HTMLButtonElement>('button[aria-label="Collapse"]')?.click() })
-    await flush()
-    expect(localStorage.getItem(EXPANDED_KEY)).toBe('0')
+    expect(localStorage.getItem(WORKSPACE_KEY)).toBe('ws-2')
   })
 
-  it('restores an expanded sidebar from localStorage', async () => {
-    localStorage.setItem(EXPANDED_KEY, '1')
-    localStorage.setItem(WORKSPACE_KEY, 'ws-2')
+  it('remounts the panel keyed by the workspace when selection changes', async () => {
     const list = makeList(listState([ws('ws-1', '/p1'), ws('ws-2', '/p2')]))
     const actions = makeActions()
-    const { mount } = await mountSidebar(list, actions)
+    const { mount } = await mountView(list, actions)
+    expect(actions.getStatus).toHaveBeenCalledWith('/p1', expect.any(AbortSignal))
 
-    expect(mount.querySelector('.dsh-github-panel')).not.toBeNull()
+    const select = mount.querySelector<HTMLSelectElement>('.dsh-github-workspace-picker select')
+    await act(async () => { setSelectValue(select!, 'ws-2') })
+    await flush()
+
     expect(actions.getStatus).toHaveBeenCalledWith('/p2', expect.any(AbortSignal))
   })
 
-  it('returns focus to the rail button on collapse', async () => {
-    const list = makeList(listState([ws('ws-1', '/p1')]))
-    const actions = makeActions()
-    const { mount } = await mountSidebar(list, actions)
-
-    await act(async () => { mount.querySelector<HTMLButtonElement>('.dsh-github-sidebar-rail-btn')?.click() })
-    await flush()
-    await act(async () => { mount.querySelector<HTMLButtonElement>('button[aria-label="Collapse"]')?.click() })
-    await flush()
-
-    expect(document.activeElement).toBe(mount.querySelector('.dsh-github-sidebar-rail-btn'))
-  })
-
-  it('reflects workspace list changes from the snapshot subscription', async () => {
+  it('mounts the panel when the workspace list becomes non-empty', async () => {
     const list = makeList(listState([]))
     const actions = makeActions()
-    const { mount } = await mountSidebar(list, actions)
-
-    await act(async () => { mount.querySelector<HTMLButtonElement>('.dsh-github-sidebar-rail-btn')?.click() })
-    await flush()
+    const { mount } = await mountView(list, actions)
     expect(mount.textContent).toContain('No workspace.')
 
     await act(async () => { list.setState(listState([ws('ws-1', '/p1')])) })
     await flush()
+
     expect(mount.querySelector('.dsh-github-panel')).not.toBeNull()
     expect(actions.getStatus).toHaveBeenCalledWith('/p1', expect.any(AbortSignal))
   })

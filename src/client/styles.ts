@@ -1,21 +1,14 @@
 /**
- * dsh-github client stylesheet: the persistent Source Control sidebar (right
- * rail + expandable panel), commit area, collapsible sections, side-by-side
- * diff viewer, and confirm modal. Injected once.
+ * dsh-github client stylesheet: the Source Control conversation view (SCM
+ * sidebar + diff viewer), commit area, collapsible sections, and confirm
+ * modal. Injected once.
  */
 const STYLE_ID = 'dsh-github-styles'
 
 const css = `
-/* ===== Persistent sidebar shell (rail + expanded panel) ===== */
-.dsh-github-sidebar{position:fixed;right:0;top:0;bottom:0;z-index:1500;display:flex;flex-direction:column;font-size:14px}
-.dsh-github-sidebar-rail{display:flex;flex-direction:column;align-items:stretch;width:40px;height:100%;background:var(--dsw-alias-bg-layer-2,#1e1e1e);border-left:1px solid var(--dsw-alias-border-l2,#2b2b2b)}
-.dsh-github-sidebar-rail-btn{display:flex;flex-direction:column;align-items:center;gap:8px;width:40px;padding:12px 0;border:0;border-left:2px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary,#c5c5c5);cursor:pointer}
-.dsh-github-sidebar-rail-btn:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary,#e8e8e8)}
-.dsh-github-sidebar-rail-btn:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2563eb);outline-offset:-2px}
-.dsh-github-sidebar-rail-icon{font-size:18px;line-height:1}
-.dsh-github-sidebar-rail-label{writing-mode:vertical-rl;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
-.dsh-github-sidebar-expanded{display:flex;flex-direction:column;width:min(980px,96vw);height:100%;background:var(--dsw-alias-bg-layer-2,#1e1e1e);border-left:1px solid var(--dsw-alias-border-l2,#2b2b2b);box-shadow:-8px 0 30px rgba(0,0,0,.35);color:var(--dsw-alias-label-primary,#e8e8e8)}
-.dsh-github-sidebar-empty{flex:1;display:flex;align-items:center;justify-content:center;padding:20px;color:var(--dsw-alias-label-tertiary,#9a9a9a)}
+/* ===== View-tab fill (rendered inside the conversation view ring) ===== */
+.dsh-github-view{width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.dsh-github-view-empty{flex:1;display:flex;align-items:center;justify-content:center;padding:20px;color:var(--dsw-alias-label-tertiary,#9a9a9a)}
 .dsh-github-panel{width:100%;height:100%;display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-2,#1e1e1e);color:var(--dsw-alias-label-primary,#e8e8e8)}
 .dsh-github-panel button,.dsh-github-panel textarea,.dsh-github-panel input{font:inherit}
 .dsh-github-panel button:focus-visible,.dsh-github-panel textarea:focus-visible,.dsh-github-panel input:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2563eb);outline-offset:1px}

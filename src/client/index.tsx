@@ -1,27 +1,26 @@
 /**
  * dsh-github client plugin: the browser half of the local Git Source Control
  * panel. It mounts the Git Remote namespace, generates the panel action
- * wrappers from the shared contract, and mounts one persistent Source Control
- * sidebar (collapsed rail → expanded panel) on the page.
+ * wrappers from the shared contract, and registers one Source Control tab
+ * into the session conversation view ring.
  */
-import { createRoot } from 'react-dom/client'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { DSH_GITHUB_REMOTE } from './remote.ts'
 import { DSH_GITHUB_INVOCATIONS } from '../contract.ts'
 import { NS, en, zh } from './locales.ts'
 import type { GithubPanelActions } from './panel.tsx'
-import { SourceControlSidebar } from './sidebar.tsx'
+import { SourceControlView, type SourceControlViewSlotProps } from './view.tsx'
 import { adoptStyles } from './styles.ts'
 
-/** Required services: the Remote gateway, locale, and Workspace list. */
+/** Required services: the Remote gateway, locale, Workspace list, and slots. */
 export const inject = ['slots', 'remote', 'locale', 'workspaces']
 
 function resolveWorkspacePath(cwd: string, filePath: string): string {
   return filePath.startsWith('/') || /^[A-Za-z]:[/\\]/.test(filePath) || filePath.startsWith('\\\\') ? filePath : `${cwd.replace(/[/\\]+$/, '')}/${filePath.replace(/^[/\\]+/, '')}`
 }
 
-/** Compose the local Git Source Control sidebar. @param ctx - client root context. */
+/** Compose the local Git Source Control view tab. @param ctx - client root context. */
 export function apply(ctx: ClientContext): void {
   adoptStyles()
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-github: dictionaries')
@@ -52,13 +51,12 @@ export function apply(ctx: ClientContext): void {
   }
   const panelActions = actions as unknown as GithubPanelActions
 
-  // Mount one persistent Source Control sidebar (rail + expandable panel).
-  ctx.effect(() => {
-    const mount = document.createElement('div')
-    mount.className = 'dsh-github-sidebar-host'
-    document.body.appendChild(mount)
-    const root = createRoot(mount)
-    root.render(<SourceControlSidebar actions={panelActions} t={t} list={ctx.workspaces.list} />)
-    return () => { root.unmount(); mount.remove() }
-  }, 'dsh-github: sidebar')
+  // Register the Source Control tab into the session conversation view ring.
+  ctx.slots.inject('conversation.view', () => ctx.slots.register({
+    name: 'conversation.view',
+    id: 'source-control',
+    order: 20,
+    label: () => t('view.label'),
+    inject: () => ({ actions: panelActions, t }),
+  }, (props: SourceControlViewSlotProps) => <SourceControlView actions={props.actions} t={props.t} useWorkspaces={props.useWorkspaces} />))
 }

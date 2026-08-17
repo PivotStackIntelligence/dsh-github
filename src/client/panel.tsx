@@ -146,11 +146,10 @@ function Section({ title, count, expanded, onToggle, actions, children }: {
 }
 
 /** Render the local Source Control and pull-request panel. */
-export function GithubChangesPanel({ path, actions, t, onCollapse, workspaces, workspaceId, onSelectWorkspace }: {
+export function GithubChangesPanel({ path, actions, t, workspaces, workspaceId, onSelectWorkspace }: {
   path: string
   actions: GithubPanelActions
   t: (key: DshGithubKey, params?: Record<string, string>) => string
-  onCollapse: () => void
   workspaces: readonly WorkspaceView[]
   workspaceId: WorkspaceId
   onSelectWorkspace: (id: WorkspaceId) => void
@@ -194,14 +193,12 @@ export function GithubChangesPanel({ path, actions, t, onCollapse, workspaces, w
   const diffRequest = useRef<{ id: number; controller: AbortController } | null>(null)
   const requestId = useRef(0)
   const operationRef = useRef<Operation | null>(null)
-  const confirmRef = useRef<ConfirmRequest | null>(null)
   const commitMenuRef = useRef<HTMLDivElement>(null)
   const refreshRef = useRef<(clearError?: boolean) => void>(() => {})
   const expandedRef = useRef({ commits: false, branches: false, remotes: false, tags: false, stashes: false, output: false })
   const logQueryRef = useRef('')
 
   useEffect(() => { operationRef.current = operation })
-  useEffect(() => { confirmRef.current = confirm })
   useEffect(() => { logQueryRef.current = logQuery })
   useEffect(() => {
     expandedRef.current = { commits: commitsExpanded, branches: branchesExpanded, remotes: remotesExpanded, tags: tagsExpanded, stashes: stashesExpanded, output: outputExpanded }
@@ -518,24 +515,17 @@ export function GithubChangesPanel({ path, actions, t, onCollapse, workspaces, w
     }, 3000)
     const onFocus = (): void => { refreshRef.current(false) }
     const onVisibility = (): void => { if (document.visibilityState === 'visible') refreshRef.current(false) }
-    const onKeyDown = (event: globalThis.KeyboardEvent): void => {
-      if (event.key !== 'Escape') return
-      if (confirmRef.current !== null) { setConfirm(null); return }
-      onCollapse()
-    }
-    document.addEventListener('keydown', onKeyDown)
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
       window.clearInterval(interval)
-      document.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVisibility)
       statusRequest.current?.controller.abort()
       for (const request of sectionRequests.current.values()) request.controller.abort()
       diffRequest.current?.controller.abort()
     }
-  }, [path, onCollapse])
+  }, [path])
 
   // Lazy-load a section on first expand; commits reload (debounced) on query change.
   useEffect(() => { if (branchesExpanded) loadOverview() }, [branchesExpanded, path])
@@ -605,7 +595,6 @@ export function GithubChangesPanel({ path, actions, t, onCollapse, workspaces, w
         <div className="dsh-github-panel-actions">
           <button type="button" disabled={loading || operation !== null} onClick={() => refresh()} aria-label={t('panel.refresh')} title={t('panel.refresh')}>↻</button>
           {status?.githubUrl ? <button type="button" onClick={() => openUrl(status.githubUrl!)}>{t('panel.openGithub')}</button> : null}
-          <button type="button" onClick={onCollapse} aria-label={t('panel.collapse')} title={t('panel.collapse')}>«</button>
         </div>
       </header>
 

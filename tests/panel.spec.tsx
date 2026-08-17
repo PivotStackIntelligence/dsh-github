@@ -101,17 +101,16 @@ async function flush(): Promise<void> {
   await act(async () => { await new Promise(resolve => { setTimeout(resolve, 0) }) })
 }
 
-async function mountPanel(actions: GithubPanelActions, options: { onCollapse?: () => void; workspaces?: readonly WorkspaceView[]; workspaceId?: WorkspaceId; onSelectWorkspace?: (id: WorkspaceId) => void } = {}) {
-  const onCollapse = options.onCollapse ?? vi.fn()
+async function mountPanel(actions: GithubPanelActions, options: { workspaces?: readonly WorkspaceView[]; workspaceId?: WorkspaceId; onSelectWorkspace?: (id: WorkspaceId) => void } = {}) {
   const onSelectWorkspace = options.onSelectWorkspace ?? vi.fn()
   const mount = document.createElement('div')
   document.body.appendChild(mount)
   const root = createRoot(mount)
   await act(async () => {
-    root.render(<GithubChangesPanel path="/repo" actions={actions} t={t} onCollapse={onCollapse} workspaces={options.workspaces ?? workspaces} workspaceId={options.workspaceId ?? workspaceId} onSelectWorkspace={onSelectWorkspace} />)
+    root.render(<GithubChangesPanel path="/repo" actions={actions} t={t} workspaces={options.workspaces ?? workspaces} workspaceId={options.workspaceId ?? workspaceId} onSelectWorkspace={onSelectWorkspace} />)
   })
   await flush()
-  return { mount, root, onCollapse, onSelectWorkspace }
+  return { mount, root, onSelectWorkspace }
 }
 
 function changeGroup(mount: HTMLElement, title: string): HTMLElement {
@@ -187,6 +186,13 @@ describe('GithubChangesPanel', () => {
     expect(document.querySelector('.dsh-github-modal')).not.toBeNull()
     expect(actions.discard).not.toHaveBeenCalled()
 
+    // Esc closes the confirm modal without discarding.
+    await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect(document.querySelector('.dsh-github-modal')).toBeNull()
+    expect(actions.discard).not.toHaveBeenCalled()
+
+    // Re-open and confirm.
+    await act(async () => { rowButton(changeRow(mount, 'changed.ts'), 'Discard Changes: changed.ts').click() })
     const confirmButton = document.querySelector<HTMLButtonElement>('.dsh-github-modal-actions button.danger')
     expect(confirmButton).not.toBeNull()
     await act(async () => { confirmButton?.click() })
@@ -281,13 +287,12 @@ describe('GithubChangesPanel', () => {
     vi.useFakeTimers()
     try {
       const actions = makeActions()
-      const onCollapse = vi.fn()
       const onSelectWorkspace = vi.fn()
       const mount = document.createElement('div')
       document.body.appendChild(mount)
       const root = createRoot(mount)
       await act(async () => {
-        root.render(<GithubChangesPanel path="/repo" actions={actions} t={t} onCollapse={onCollapse} workspaces={workspaces} workspaceId={workspaceId} onSelectWorkspace={onSelectWorkspace} />)
+        root.render(<GithubChangesPanel path="/repo" actions={actions} t={t} workspaces={workspaces} workspaceId={workspaceId} onSelectWorkspace={onSelectWorkspace} />)
         await Promise.resolve()
         await Promise.resolve()
         await Promise.resolve()
@@ -306,15 +311,6 @@ describe('GithubChangesPanel', () => {
     } finally {
       vi.useRealTimers()
     }
-  })
-
-  it('triggers onCollapse on Escape', async () => {
-    const actions = makeActions()
-    const onCollapse = vi.fn()
-    await mountPanel(actions, { onCollapse })
-
-    await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
-    expect(onCollapse).toHaveBeenCalled()
   })
 
   it('renders a side-by-side diff with added and removed line cells', async () => {

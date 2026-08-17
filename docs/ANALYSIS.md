@@ -20,7 +20,7 @@ VS Code 的另一个重要经验是操作状态必须可见。面板维护一个
 
 ### GitLens
 
-GitLens 将仓库导航、分支导航和浏览器链接作为相互独立的功能。插件沿用功能划分的思路，但把改动、提交、分支、同步和浏览器链接收敛进常驻右侧的 Source Control 侧栏：改动/提交区 + 懒加载的 COMMITS、BRANCHES、REMOTES、TAGS、STASHES 区段。
+GitLens 将仓库导航、分支导航和浏览器链接作为相互独立的功能。插件沿用功能划分的思路，但把改动、提交、分支、同步和浏览器链接收敛进会话视图环里的 Source Control tab（与对话/轨迹并列，主结构内左右分栏）：改动/提交区 + 懒加载的 COMMITS、BRANCHES、REMOTES、TAGS、STASHES 区段。
 
 GitHub 页面是本地 Git 状态的浏览器入口，而不是第二套远程仓库数据源。仓库、分支、commit、文件、compare 和已经 Fetch 的 PR ref 都由本地 remote 与 ref 推导，打开后交由 GitHub 网页完成 PR 创建、评论和其他 GitHub 专属操作。
 
@@ -37,9 +37,8 @@ src/contract.ts       Typert invocation、输入约束和返回值 wire schema
 src/types.ts          Host 与 Client 共用的 Git 状态类型
 src/runtime.ts        本地 Git 命令、状态解析、操作和 GitHub URL 推导
 src/client/remote.ts  Client 到 Host Remote 的适配
-src/client/sidebar.tsx
-                      常驻右侧 Source Control 侧栏：40px rail ↔ 展开/收起、工作区切换、localStorage 持久化
-src/client/panel.tsx  展开后的 SCM 面板：改动分组、提交区、懒加载区段与操作状态
+src/client/view.tsx    会话视图环里的 Source Control tab：注册 conversation.view 槽位、工作区解析（持久化 id → recent → 首个）、随 tab 挂载/卸载
+src/client/panel.tsx   tab 主体内的 SCM 面板：头部工作区切换 + 左分组/提交区、右 diff 查看器、懒加载区段与操作状态
 src/client/diff.tsx   side-by-side / inline diff 查看器
 src/client/confirm.tsx
                       内联确认弹窗（破坏性操作）
@@ -168,7 +167,7 @@ Fork 场景使用 fetch remote 作为 base repository，push remote 作为 head 
 
 | VS Code 习惯 | dsh-github 对应功能 |
 | --- | --- |
-| Source Control view | 常驻右侧 Source Control 侧栏（40px rail ↔ 展开，左右分栏） |
+| Source Control view | 会话视图环里的 Source Control tab（主结构内左右分栏） |
 | Staged Changes / Changes / Merge Changes | STAGED CHANGES / CHANGES / MERGE CHANGES 分组（带数量 badge） |
 | Stage / Unstage resource | 文件级 Stage / Unstage |
 | Discard / Discard All Changes | 带内联确认的 Discard / Discard All |
@@ -216,10 +215,10 @@ Fork 场景使用 fetch remote 作为 base repository，push remote 作为 head 
 - `git diff --check`；
 - 临时 Git 仓库中的 status、diff、stage/unstage、discard、commit/amend/undo-last-commit、conflict 三选一、fetch/pull/push/sync、branch rename/delete、merge/rebase continue-abort、remotes、tags、stashes、log/showCommit/showCommitDiff、unborn repository、PR ref 和 fork compare 场景；
 - 面板用例：分组折叠/计数、stage/unstage/discard 交互、Amend 提交、冲突 Accept 三选一、sync/publish 按钮状态、懒加载区段渲染、3s 轮询启动/停止、Esc/焦点圈闭；
-- 真实 Web Harness 重启后的常驻 Source Control 侧栏（rail 展开/收起、Esc、工作区切换与 localStorage 持久化）、diff 查看器、各区段与 GIT OUTPUT、操作面板和浏览器 console/page error 检查。
+- 真实 Web Harness 重启后的 Source Control 视图 tab（与对话/轨迹并列、挂载/卸载与轮询启停、工作区切换）、diff 查看器、各区段与 GIT OUTPUT、操作面板和浏览器 console/page error 检查。
 
 ## 10. 后续维护原则
 
 继续扩展时，优先复用本地 Git 已有的 remote、ref 和 credential 配置；不要为了增加 GitHub 功能而引入远程 API、Token 或新的 Git 客户端抽象。
 
-rc.6 的 Workspace 菜单兼容适配（`legacy-menu.tsx`）已于 v0.2 删除，入口改为常驻右侧 Source Control 侧栏；若上游提供正式的 slot，可改为把侧栏注册到该 slot。除非出现明确的用户需求和可验证的本地 Git 使用场景，否则不增加 GitHub API、PR 管理或复杂的自动同步功能。
+rc.6 的 Workspace 菜单兼容适配（`legacy-menu.tsx`）已于 v0.2 删除，入口改为注册进会话视图环（`conversation.view`）的 Source Control tab；壳层 details 列由官方工具详情占用、不可占用，因此 tab 是官方集成方式。除非出现明确的用户需求和可验证的本地 Git 使用场景，否则不增加 GitHub API、PR 管理或复杂的自动同步功能。
