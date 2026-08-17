@@ -4,6 +4,12 @@
   "description": "Source Control and GitHub panel for DeepSeek Harness.",
   "license": "MIT",
   "type": "module",
+  "packageManager": "pnpm@10.17.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
   "main": "lib/index.js",
   "exports": {
     ".": {

@@ -18,6 +18,12 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Configure git identity
+        run: |
+          git config --global user.email "ci@dsh-github.invalid"
+          git config --global user.name "dsh-github CI"
+          git config --global init.defaultBranch main
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
