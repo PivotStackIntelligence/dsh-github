@@ -317,6 +317,7 @@ describe('GithubChangesPanel', () => {
     expect(actions.getDiff).toHaveBeenCalledWith('/repo', 'changed.ts', 'working', expect.any(AbortSignal))
     expect(mount.querySelector('.dsh-github-diff-line.left.remove')?.textContent).toBe('old')
     expect(mount.querySelector('.dsh-github-diff-line.right.add')?.textContent).toBe('new')
+    expect(mount.querySelector('.dsh-github-diff-row.pair')).not.toBeNull()
   })
 
   it('fetches a specific remote from the Remotes section', async () => {

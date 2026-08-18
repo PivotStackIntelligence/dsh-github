@@ -181,13 +181,16 @@ const css = `
 .dsh-github-diff-hunk-header{padding:6px 16px;background:var(--dsw-alias-bg-module-platform,#ececec);color:var(--dsw-alias-label-caption,#999999);font:11px/14px ${CODE};white-space:pre-wrap;word-break:break-all}
 .dsh-github-diff-grid{display:block}
 .dsh-github-diff-row{display:grid;grid-template-columns:48px 1fr 48px 1fr;min-width:0}
-.dsh-github-diff-row .line{white-space:pre-wrap;word-break:break-all;padding:0 8px;min-width:0}
+.dsh-github-diff-row .dsh-github-diff-line{white-space:pre-wrap;word-break:break-all;padding:0 8px;min-width:0}
 .dsh-github-diff-line-no{padding:0 6px;text-align:right;color:var(--dsw-alias-label-caption,#999999);user-select:none;background:var(--dsw-alias-bg-layer-1,#ffffff);border-right:1px solid var(--dsw-alias-border-l1,#e5e5e5);font:11px/20px ${CODE}}
-.dsh-github-diff-row .line.left{border-right:1px solid var(--dsw-alias-border-l2,#d5d5d5)}
-.dsh-github-diff-row .line.context{color:var(--dsw-alias-label-secondary,#555555)}
-.dsh-github-diff-row .line.remove{background:color-mix(in srgb, var(--dsw-alias-state-error-primary,#d1242f) 12%, var(--dsw-alias-bg-layer-1,#ffffff));color:var(--dsw-alias-state-error-primary,#d1242f)}
-.dsh-github-diff-row .line.add{background:var(--dsw-alias-state-success-tertiary,#e6f4ea);color:color-mix(in srgb, var(--dsw-alias-state-success-primary,#1a7f37) 72%, var(--dsw-alias-label-primary,#111111))}
-.dsh-github-diff-row .line.empty{background:var(--dsw-alias-bg-layer-1,#ffffff)}
+.dsh-github-diff-row .dsh-github-diff-line.left{border-right:1px solid var(--dsw-alias-border-l2,#d5d5d5)}
+.dsh-github-diff-row .dsh-github-diff-line.context{color:var(--dsw-alias-label-secondary,#555555)}
+.dsh-github-diff-row .dsh-github-diff-line.remove{background:color-mix(in srgb, var(--dsw-alias-state-error-primary,#d1242f) 12%, var(--dsw-alias-bg-layer-1,#ffffff));color:var(--dsw-alias-state-error-primary,#d1242f)}
+.dsh-github-diff-row .dsh-github-diff-line.add{background:var(--dsw-alias-state-success-tertiary,#e6f4ea);color:color-mix(in srgb, var(--dsw-alias-state-success-primary,#1a7f37) 72%, var(--dsw-alias-label-primary,#111111))}
+.dsh-github-diff-row .dsh-github-diff-line.empty{background:var(--dsw-alias-bg-layer-1,#ffffff)}
+.dsh-github-diff-row .dsh-github-diff-line.left.remove::before{content:'− ';user-select:none;opacity:.7}
+.dsh-github-diff-row .dsh-github-diff-line.right.add::before{content:'+ ';user-select:none;opacity:.7}
+.dsh-github-diff-row.pair .dsh-github-diff-line-no{background:var(--dsw-alias-bg-layer-2,#f2f2f2)}
 .dsh-github-diff-row.meta{display:block;padding:2px 16px;color:var(--dsw-alias-label-caption,#999999);background:var(--dsw-alias-bg-module-platform,#ececec);font-style:italic}
 .dsh-github-diff-inline-line{display:grid;grid-template-columns:48px 20px 1fr;min-width:0}
 .dsh-github-diff-inline-line .text{white-space:pre-wrap;word-break:break-all;padding:0 8px;min-width:0}
