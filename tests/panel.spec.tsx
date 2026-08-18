@@ -231,10 +231,11 @@ describe('GithubChangesPanel', () => {
     expect(actions.commit).toHaveBeenCalledWith('/repo', 'test message', true)
   })
 
-  it('shows ahead/behind counts on the sync button', async () => {
+  it('shows a sync icon with ahead/behind counts in the accessible label', async () => {
     const { mount } = await mountPanel(makeActions())
     const syncButton = mount.querySelector<HTMLButtonElement>('.dsh-github-sync-btn')
-    expect(syncButton?.textContent).toBe('↑1 ↓2')
+    expect(syncButton?.querySelector('svg.dsh-github-sync-icon')).not.toBeNull()
+    expect(syncButton?.textContent).toBe('')
     expect(syncButton?.getAttribute('aria-label')).toBe('Sync changes (ahead 1, behind 2)')
   })
 

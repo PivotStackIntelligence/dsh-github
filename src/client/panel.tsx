@@ -337,7 +337,6 @@ export function GithubChangesPanel({ path, title, actions, t }: {
     if (status.upstream === null ? canPublish : canSync) runStatusAction('sync', () => actions.sync(path))
   }
   const syncAria = status === null ? '' : status.upstream === null ? t('panel.publishAria') : t('panel.syncAria', { ahead: String(status.ahead), behind: String(status.behind) })
-  const syncLabel = status === null ? '' : status.upstream === null ? t('panel.publish') : `↑${status.ahead} ↓${status.behind}`
 
   const resolveConflict = (file: GitFileChange, strategy: GitConflictStrategy): void => {
     runStatusAction('resolveConflict', () => actions.resolveConflict(path, file.path, strategy))
@@ -624,7 +623,7 @@ export function GithubChangesPanel({ path, title, actions, t }: {
                 </div> : null}
               </div>
               <span className="spacer" />
-              <button type="button" className={`dsh-github-sync-btn${status.upstream === null ? ' publish' : ''}`} disabled={status.upstream === null ? !canPublish : !canSync} onClick={syncAction} aria-label={syncAria} title={syncAria}>{syncLabel}</button>
+              <button type="button" className={`dsh-github-sync-btn${status.upstream === null ? ' publish' : ''}`} disabled={status.upstream === null ? !canPublish : !canSync} onClick={syncAction} aria-label={syncAria} title={syncAria}>{status.upstream === null ? t('panel.publish') : <svg className="dsh-github-sync-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>}</button>
             </div>
           </div>
 

@@ -72,8 +72,9 @@ const css = `
 .dsh-github-dropdown-menu button{display:block;width:100%;text-align:left;border:0;border-radius:6px;padding:7px 10px;background:transparent;color:var(--dsw-alias-label-secondary,#555555);cursor:pointer;font:${FONT.xs}}
 .dsh-github-dropdown-menu button:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.05));color:var(--dsw-alias-label-primary,#111111)}
 .dsh-github-dropdown-menu button.danger{color:var(--dsw-alias-state-error-primary,#d1242f)}
-.dsh-github-sync-btn{width:32px;height:32px;border-radius:50%;border:1px solid transparent;background:var(--dsw-alias-brand-primary,#2563eb);color:var(--dsw-alias-label-primary-inverted,#ffffff);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font:12px/1 ${CODE}}
+.dsh-github-sync-btn{width:32px;height:32px;border-radius:50%;border:1px solid transparent;background:var(--dsw-alias-brand-primary,#2563eb);color:var(--dsw-alias-label-primary-inverted,#ffffff);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:none}
 .dsh-github-sync-btn:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover,var(--dsw-alias-brand-primary,#2563eb))}
+.dsh-github-sync-icon{display:block}
 .dsh-github-sync-btn.publish{width:auto;border-radius:16px;padding:0 12px;font:${FONT.xsStrong}}
 
 /* ===== Merge/rebase banner ===== */
