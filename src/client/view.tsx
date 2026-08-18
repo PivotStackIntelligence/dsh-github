@@ -4,6 +4,7 @@
  * session's workspace (cwd) from the sessions standard kit and renders the
  * GithubChangesPanel; it mounts/unmounts with the active tab, so polling
  * follows tab lifecycle. No workspace switching and no persistence.
+ * Author: bugmaker2 · PivotStack Intelligence
  */
 import type { PropsRuntime, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 import { workspaceTitleOf, type SessionId, type SessionListState } from '@deepseek-ai/dsh-client-runtime/client'

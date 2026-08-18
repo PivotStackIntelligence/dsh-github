@@ -4,6 +4,7 @@
  * wrappers from the shared contract, and registers one Source Control tab
  * into the session conversation view ring (bound to the current session's
  * workspace).
+ * Author: bugmaker2 · PivotStack Intelligence
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'

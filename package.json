@@ -138,5 +138,9 @@
   "bugs": {
     "url": "https://github.com/PivotStackIntelligence/dsh-github/issues"
   },
-  "homepage": "https://github.com/PivotStackIntelligence/dsh-github"
+  "homepage": "https://github.com/PivotStackIntelligence/dsh-github",
+  "author": {
+    "name": "bugmaker2",
+    "url": "https://github.com/PivotStackIntelligence"
+  }
 }

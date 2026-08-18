@@ -1,3 +1,7 @@
+/**
+ * dsh-github — Shared host/client Git types.
+ * Author: bugmaker2 · PivotStack Intelligence
+ */
 /** A changed file in the active local Git repository. */
 export interface GitFileChange {
   /** Repository-relative path using the Git status spelling. */

@@ -2,6 +2,7 @@
  * Unified-diff parsing and rendering for the Source Control drawer. The
  * parser splits a bounded unified diff into per-hunk lines aligned for a
  * side-by-side (old | new) view, and also powers the inline view.
+ * Author: bugmaker2 · PivotStack Intelligence
  */
 
 /** One parsed line of a unified diff hunk. */

@@ -1,3 +1,7 @@
+/**
+ * dsh-github — Host Git engine: local git commands, state parsing, and GitHub browser links.
+ * Author: bugmaker2 · PivotStack Intelligence
+ */
 import { execFile } from 'node:child_process'
 import { access, open, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { isAbsolute, relative, resolve, sep } from 'node:path'

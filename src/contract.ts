@@ -1,3 +1,7 @@
+/**
+ * dsh-github — Shared strict Typert wire contract between the host and browser halves.
+ * Author: bugmaker2 · PivotStack Intelligence
+ */
 import { z } from 'zod'
 import type { InvocationDescriptor } from '@deepseek-ai/dsh-typert-protocol'
 

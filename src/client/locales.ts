@@ -1,4 +1,6 @@
-/** Product copy for the Source Control menu and panel. */
+/** Product copy for the Source Control menu and panel.
+ * Author: bugmaker2 · PivotStack Intelligence
+ */
 export const zh = {
   'menu.viewChanges': '查看 Source Control', 'menu.viewChanges.aria': '查看 {name} 的 Source Control',
   'panel.title': 'Source Control', 'panel.refresh': '刷新', 'panel.openGithub': '打开 GitHub',

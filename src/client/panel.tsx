@@ -3,6 +3,7 @@
  * Control simulation rendered into the Harness right drawer. Single SCM
  * sidebar + diff viewer, collapsible lazy-loaded sections, inline confirm
  * modal, side-by-side diff, and the standard operation state machine.
+ * Author: bugmaker2 · PivotStack Intelligence
  */
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import type { GitBranch, GitCommitDetail, GitCommitFile, GitCommitSummary, GitConflictStrategy, GitDiff, GitDiffMode, GitFileChange, GitLog, GitOutput, GitOutputEntry, GitRemote, GitRemoteList, GitRepositoryOverview, GitStash, GitStashList, GitStatus, GitTag, GitTagList } from '../types.ts'

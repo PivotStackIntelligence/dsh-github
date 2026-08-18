@@ -2,6 +2,7 @@
  * Inline confirm / prompt modal used for destructive operations and
  * single-step creation flows. It traps focus, closes on Escape, and returns
  * focus to the previously focused element on unmount. No external UI library.
+ * Author: bugmaker2 · PivotStack Intelligence
  */
 import { useEffect, useRef, useState } from 'react'
 

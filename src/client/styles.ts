@@ -2,6 +2,7 @@
  * dsh-github client stylesheet: DeepSeek-native Source Control view styling.
  * All colors/fonts ride `--dsw-*` / `--ds-*` theme tokens with neutral-light
  * fallbacks only (no VS Code dark hardcodes). Class names are stable.
+ * Author: bugmaker2 · PivotStack Intelligence
  */
 const STYLE_ID = 'dsh-github-styles'
 

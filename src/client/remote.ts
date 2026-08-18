@@ -1,3 +1,7 @@
+/**
+ * dsh-github — Client Remote contribution and typed namespace face for local Git methods.
+ * Author: bugmaker2 · PivotStack Intelligence
+ */
 import type { RemoteResult, TypertRemoteContribution } from '@deepseek-ai/dsh-typert-protocol'
 import type { GitCommitDetail, GitConflictStrategy, GitDiff, GitDiffMode, GitLog, GitOutput, GitRemoteList, GitRepositoryOverview, GitStashList, GitStatus, GitTagList } from '../types.ts'
 import { DSH_GITHUB_INVOCATIONS } from '../contract.ts'

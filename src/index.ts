@@ -1,3 +1,7 @@
+/**
+ * dsh-github — Host plugin: registers the local Git Remote and the strict Typert manifest.
+ * Author: bugmaker2 · PivotStack Intelligence
+ */
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-typert-registry'

@@ -1,3 +1,7 @@
+/**
+ * dsh-github — Host Typert model manifest for local Git and GitHub browser links.
+ * Author: bugmaker2 · PivotStack Intelligence
+ */
 import type { TypertContribution } from '@deepseek-ai/dsh-typert-registry/types'
 import { DSH_GITHUB_INVOCATIONS } from './contract.ts'
 
