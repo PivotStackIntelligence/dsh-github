@@ -4,7 +4,7 @@
 
 ## 功能
 
-- **Source Control 面板** — 会话头部的 Source Control 按钮（⑂）打开右缘滑入面板（`min(980px, 96vw)`，滑入动画），仅显示当前会话工作区；面板内左右分栏（左 SCM 分组/提交区、右 diff 查看器），不占满屏幕、无遮罩；`Esc`/`×`/再次点击按钮关闭，焦点归还按钮。
+- **视图 tab** — 会话视图环中的第三个 "Source Control" tab（与对话/轨迹并列）；tab 活跃时占满主区、主体内左右分栏（左 SCM 分组/提交区、右 diff 查看器），无遮罩；仅显示当前会话的工作区；切回对话即恢复。
 - **仓库头部** — 仓库（workspace）名、当前分支、ahead/behind 数量、GitHub 链接和刷新按钮。
 - **提交栏** — 多行 commit message、`Amend` 复选框、`Commit` 主按钮及下拉菜单（Commit / Commit & Push / Commit & Sync / Undo Last Commit），以及带 ↑n ↓n 计数的圆形 Sync/Publish 按钮。
 - **改动分组** — STAGED CHANGES / CHANGES / MERGE CHANGES（未跟踪文件并入 CHANGES），可折叠、带数量 badge，组级动作（+ 全部暂存 / − 全部取消暂存 / ↶ 全部丢弃）。文件状态 badge 颜色对齐 VS Code：`A` 绿、`M` 棕黄、`D` 红、`R`/`C` 蓝、`U` 绿、`!` 黄。
@@ -17,7 +17,7 @@
 - **Stashes** — 列表、apply、apply & drop、drop、查看 diff。
 - **Merge / Rebase 状态** — 从面板继续或中止进行中的 merge / rebase。
 - **Git 输出** — 可折叠区段，展示最近 git 命令及其（脱敏后）输出。
-- **自动刷新** — 打开即刷新，面板打开期间每 3 秒轮询一次（关闭即停止），窗口 focus / visibilitychange 时立即刷新；懒加载区段（commits、branches、remotes、tags、stashes）首次展开时加载，之后随每次 status 刷新。
+- **自动刷新** — 打开即刷新，tab 活跃期间每 3 秒轮询一次（切走停止），窗口 focus / visibilitychange 时立即刷新；懒加载区段（commits、branches、remotes、tags、stashes）首次展开时加载，之后随每次 status 刷新。
 
 插件使用仓库现有的本地 Git 配置、SSH 密钥、HTTPS credential helper 和 Git remote。不调用 GitHub API、不保存 GitHub token、不实现 OAuth、不依赖 GitHub CLI，也不暴露任意 shell 命令。GitHub 链接只打开对应的浏览器页面；Compare 页面是创建 pull request 的交接入口。Git 写操作需要用户明确触发，并在完成后重新读取仓库状态。
 
@@ -39,7 +39,7 @@ pnpm run build
 dsh plugin --profile web add .
 ```
 
-重新构建插件后需要重启 Web Harness。会话头部会出现 Source Control 按钮（⑂），点击即可从右缘滑入面板。
+重新构建插件后需要重启 Web Harness。会话视图环中会出现第三个 "Source Control" tab（与对话/轨迹并列）。
 
 ## 开发
 

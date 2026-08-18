@@ -4,7 +4,7 @@ A Source Control and GitHub repository panel for DeepSeek Harness that mirrors t
 
 ## Features
 
-- **Source Control panel** — a Source Control button (⑂) in the session header opens a right-edge slide-in panel (`min(980px, 96vw)`, with a slide-in animation) bound to the current session's workspace; it splits into the SCM panel (left) and the diff viewer (right), leaves the rest of the page uncovered, and closes with `Esc`, `×`, or the button again (focus returns to the button).
+- **Source Control tab** — a third "Source Control" tab in the session view ring (alongside chat and trajectory); when active it fills the main area and splits into the SCM panel (left) and the diff viewer (right) with no overlay, shows only the current session's workspace, and switching back to chat restores the conversation.
 - **Repository header** — repository (workspace) name, current branch, ahead/behind counts, GitHub link, and refresh button.
 - **Commit bar** — multi-line commit message, `Amend` checkbox, `Commit` button with a dropdown (Commit / Commit & Push / Commit & Sync / Undo Last Commit), and a round Sync/Publish button with ↑n ↓n counts.
 - **Change groups** — STAGED CHANGES / CHANGES / MERGE CHANGES (untracked files live inside CHANGES), collapsible, with count badges and group actions (+ stage all / − unstage all / ↶ discard all). File status badges use VS Code colors: `A` green, `M` brown-yellow, `D` red, `R`/`C` blue, `U` green, `!` yellow.
@@ -17,7 +17,7 @@ A Source Control and GitHub repository panel for DeepSeek Harness that mirrors t
 - **Stashes** — list, apply, apply & drop, drop, and view diff.
 - **Merge / rebase state** — continue and abort an in-progress merge or rebase from the panel.
 - **Git output** — a collapsible section of recent git commands and their (redacted) output.
-- **Auto-refresh** — refreshes on open, every 3 seconds while the panel is open (paused when closed), and on window focus / visibility change; the lazy sections (commits, branches, remotes, tags, stashes) load on first expand and refresh with each status poll.
+- **Auto-refresh** — refreshes on open, every 3 seconds while the tab is active (paused when switched away), and on window focus / visibility change; the lazy sections (commits, branches, remotes, tags, stashes) load on first expand and refresh with each status poll.
 
 The plugin uses the repository's normal local Git configuration, SSH keys, HTTPS credential helpers, and Git remotes. It does not call the GitHub API, store GitHub tokens, implement OAuth, depend on GitHub CLI, or expose arbitrary shell commands. GitHub links open the corresponding browser pages; the Compare page is the handoff for creating a pull request. Git writes require an explicit user action, and repository state is reloaded after each operation.
 
@@ -39,7 +39,7 @@ pnpm run build
 dsh plugin --profile web add .
 ```
 
-Restart the Web Harness after rebuilding the plugin. A Source Control button (⑂) appears in the session header — click it to slide the panel in from the right edge.
+Restart the Web Harness after rebuilding the plugin. A third "Source Control" tab appears in the session view ring (next to chat and trajectory).
 
 ## Development
 

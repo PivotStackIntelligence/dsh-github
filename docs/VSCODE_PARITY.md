@@ -3,16 +3,16 @@
 本文件是本次改造的**唯一权威产品规格**。所有实现 agent 必须以此文件 + 已经定稿的共享契约
 （`src/types.ts`、`src/contract.ts`、`src/typert.ts`、`src/client/remote.ts`、`src/index.ts`）为准。
 
-目标：在 DeepSeek Harness Web 的**会话头部 Source Control 按钮 + 右缘滑入面板**里，**在形态与功能上完全模拟 VS Code 原生 Git 扩展的
+目标：在 DeepSeek Harness Web 会话视图环的**Source Control tab**里，**在形态与功能上完全模拟 VS Code 原生 Git 扩展的
 Source Control 视图**，同时保留本插件的既有边界（本地 Git + GitHub 浏览器交接，无 GitHub API、无 token）。
 
 ## 1. 产品形态
 
 ### 1.1 总体布局
 
-会话头部的 **Source Control 动作按钮**（⑂，`conversation.session.header.actions`）+ **右缘滑入 overlay 面板**（`shell.overlay`，宽 `min(980px, 96vw)`，滑入动画）；面板只绑定当前会话的工作区（cwd），无工作区切换下拉；面板内左右分栏（左 SCM 分组/提交区、右 diff 查看器）；不占满屏幕、无遮罩；`Esc`/`×`/再次点击按钮关闭，焦点归还按钮；无 cwd 时显示提示文案。
+注册进会话视图环（`conversation.view`）的**第三个视图 tab**（id `source-control`，order 20，与对话/轨迹并列、占满主区）；tab 活跃时主体内左右分栏（左 SCM 分组/提交区、右 diff 查看器）；切走即卸载；只绑定当前会话的工作区（`byId[sessionId].cwd`），无工作区切换下拉、无 localStorage 选择；无 cwd 时显示提示文案。
 
-- 面板头部：仓库/workspace 名 + root 路径 + 刷新按钮 + GitHub 链接按钮（如有）+ `×` 关闭按钮。
+- 面板头部：仓库/workspace 名 + root 路径 + 刷新按钮 + GitHub 链接按钮（如有）。
 - 左侧栏（VS Code SCM 侧栏的等价物），自上而下：
   1. **仓库头部**：仓库名（workspace 名）、当前分支、ahead/behind、GitHub 链接按钮、刷新按钮。
   2. **Commit 消息输入区**：多行 textarea + `Amend` 复选框 + `Commit` 主按钮 + `⌄` 下拉
@@ -28,7 +28,7 @@ Source Control 视图**，同时保留本插件的既有边界（本地 Git + Gi
   9. **GIT OUTPUT** 可折叠区（底部）：最近 git 命令及其输出（脱敏后）。
 - 右侧 = **diff 查看器**：默认 side-by-side（左右两栏 + 行号 + 增删着色），可切换 inline 模式；
   文件头显示旧路径 → 新路径；冲突文件在 diff 头上提供 Accept Current / Accept Incoming / Accept Both。
-- 面板打开即自动刷新；**打开期间每 3 秒轮询一次 getStatus**（关闭即停止）；窗口 focus / visibilitychange 立即刷新。
+- tab 挂载即自动刷新；**挂载期间每 3 秒轮询一次 getStatus**（切走即卸载、轮询随挂载启停）；窗口 focus / visibilitychange 立即刷新。
 
 区段 4–8 采用**懒加载**：区段首次展开时才请求对应数据，之后随每次 status 刷新一并刷新（已展开的区段）。
 
@@ -139,7 +139,7 @@ mergeState 检测：Host 在 `getStatus` 里通过 `git rev-parse --git-path` �
 5. **maxBuffer 上限**：`Math.max(64*1024, maxFiles * 8 * 1024 * 2)`；buffer 溢出映射为友好错误（`dsh-github: too many changed files to list, raise maxFiles`）。
 6. **凭据脱敏加宽**：错误信息里 `https?://` 之后到 `@` 的整段（无论是否含 `:`）统一替换为 `[credentials]@`；新增输出 buffer 同样脱敏。
 7. **符号链接防护**：`readBoundedUntrackedFile` 前用 `realpath` 校验解析后路径仍在 root 内。
-8. **MutationObserver 收窄**：`legacy-menu.tsx` 的 menu 扫描适配已随 v0.2 删除（入口改为会话头部按钮 + shell.overlay 右缘滑入面板），该条不再适用。
+8. **MutationObserver 收窄**：`legacy-menu.tsx` 的 menu 扫描适配已随 v0.2 删除（入口改为注册进会话视图环的 Source Control tab），该条不再适用。
 9. **client actions 生成**：`src/client/index.tsx` 用 contract 方法名列表生成 actions 包装（消除 14 段重复代码），保持 `GithubPanelActions` 面与契约一致。
 10. **打包/工程**：`package.json` 加 `"prepublishOnly": "pnpm run check"`；`dsh.plugin.json` 的 contributes 填真实贡献；lockfile 里 `/Users/brianq` 绝对路径问题由 docs/打包 agent 处理（优先改用 registry 版本 devDeps 并重新生成 lockfile，若 registry 无对应版本则保留 link: 并在 README 说明本地开发要求 + CI 用发布版本）；新增 GitHub Actions `ci.yml`（install + pnpm run check）。
 

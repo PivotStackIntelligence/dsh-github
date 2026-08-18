@@ -145,12 +145,11 @@ function Section({ title, count, expanded, onToggle, actions, children }: {
 }
 
 /** Render the local Source Control and pull-request panel. */
-export function GithubChangesPanel({ path, title, actions, t, onClose }: {
+export function GithubChangesPanel({ path, title, actions, t }: {
   path: string
   title: string
   actions: GithubPanelActions
   t: (key: DshGithubKey, params?: Record<string, string>) => string
-  onClose: () => void
 }) {
   const [status, setStatus] = useState<GitStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -505,7 +504,7 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
     {entry.output ? <pre className="dsh-github-output-text">{entry.output}</pre> : null}
   </div>
 
-  // Mount: initial load, 3s polling while visible, window/visibility refresh, and Esc close.
+  // Mount: initial load, 3s polling while visible, and window/visibility refresh.
   useEffect(() => {
     refresh()
     const interval = window.setInterval(() => {
@@ -513,22 +512,17 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
     }, 3000)
     const onFocus = (): void => { refreshRef.current(false) }
     const onVisibility = (): void => { if (document.visibilityState === 'visible') refreshRef.current(false) }
-    const onKeyDown = (event: globalThis.KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKeyDown)
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
       window.clearInterval(interval)
-      document.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVisibility)
       statusRequest.current?.controller.abort()
       for (const request of sectionRequests.current.values()) request.controller.abort()
       diffRequest.current?.controller.abort()
     }
-  }, [path, onClose])
+  }, [path])
 
   // Lazy-load a section on first expand; commits reload (debounced) on query change.
   useEffect(() => { if (branchesExpanded) loadOverview() }, [branchesExpanded, path])
@@ -593,7 +587,6 @@ export function GithubChangesPanel({ path, title, actions, t, onClose }: {
         <div className="dsh-github-panel-actions">
           <button type="button" disabled={loading || operation !== null} onClick={() => refresh()} aria-label={t('panel.refresh')} title={t('panel.refresh')}>↻</button>
           {status?.githubUrl ? <button type="button" onClick={() => openUrl(status.githubUrl!)}>{t('panel.openGithub')}</button> : null}
-          <button type="button" onClick={onClose} aria-label={t('panel.close')} title={t('panel.close')}>×</button>
         </div>
       </header>
 

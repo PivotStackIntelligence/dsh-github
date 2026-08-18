@@ -1,26 +1,14 @@
 /**
- * dsh-github client stylesheet: the session-header toggle button, the
- * right-edge slide-in Source Control overlay panel, commit area, collapsible
- * sections, side-by-side diff viewer, and confirm modal. Injected once.
+ * dsh-github client stylesheet: the Source Control conversation view (SCM
+ * sidebar + diff viewer), commit area, collapsible sections, side-by-side
+ * diff viewer, and confirm modal. Injected once.
  */
 const STYLE_ID = 'dsh-github-styles'
 
 const css = `
-/* ===== Header toggle button ===== */
-.dsh-github-header-action{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:var(--dsw-alias-label-secondary,#c5c5c5);cursor:pointer;font-size:16px;line-height:1}
-.dsh-github-header-action:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary,#e8e8e8)}
-.dsh-github-header-action[aria-pressed="true"]{color:var(--dsw-alias-brand-primary,#75beff)}
-.dsh-github-header-action:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2563eb);outline-offset:-2px}
-
-/* ===== Right-edge slide-in overlay panel ===== */
-@keyframes dsh-github-slide-in{from{transform:translateX(100%)}to{transform:translateX(0)}}
-.dsh-github-overlay{position:fixed;right:0;top:0;bottom:0;z-index:1200;width:min(980px,96vw);height:100%;pointer-events:auto;transform:translateX(0);animation:dsh-github-slide-in .18s ease;border-left:1px solid var(--dsw-alias-border-l2,#2b2b2b);box-shadow:-8px 0 30px rgba(0,0,0,.35);background:var(--dsw-alias-bg-layer-2,#1e1e1e);color:var(--dsw-alias-label-primary,#e8e8e8);overflow:hidden}
-@media (prefers-reduced-motion: reduce){.dsh-github-overlay{animation:none}}
-.dsh-github-overlay-empty{display:flex;flex-direction:column;height:100%}
-.dsh-github-overlay-empty-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid var(--dsw-alias-border-l2,#2b2b2b)}
-.dsh-github-overlay-empty-head button{border:1px solid var(--dsw-alias-border-l2,#3c3c3c);border-radius:6px;padding:4px 9px;background:transparent;color:inherit;cursor:pointer}
-.dsh-github-overlay-empty-head button:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.dsh-github-overlay-empty p{color:var(--dsw-alias-label-secondary,#c5c5c5);padding:22px;font-size:13px}
+/* ===== View-tab fill (rendered inside the conversation view ring) ===== */
+.dsh-github-view{width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.dsh-github-view-empty{flex:1;display:flex;align-items:center;justify-content:center;padding:20px;color:var(--dsw-alias-label-tertiary,#9a9a9a)}
 .dsh-github-panel{width:100%;height:100%;display:flex;flex-direction:column;background:var(--dsw-alias-bg-layer-2,#1e1e1e);color:var(--dsw-alias-label-primary,#e8e8e8)}
 .dsh-github-panel button,.dsh-github-panel textarea,.dsh-github-panel input{font:inherit}
 .dsh-github-panel button:focus-visible,.dsh-github-panel textarea:focus-visible,.dsh-github-panel input:focus-visible{outline:2px solid var(--dsw-alias-brand-primary,#2563eb);outline-offset:1px}

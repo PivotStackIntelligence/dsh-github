@@ -2,17 +2,17 @@
 import { useSyncExternalStore } from 'react'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { SourceControlOverlayPanel, SourceControlToggle, closeSourceControlPanel, registerSourceControlToggle, toggleSourceControlPanel } from '../src/client/source-control.tsx'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { SourceControlView } from '../src/client/view.tsx'
 import type { GithubPanelActions } from '../src/client/panel.tsx'
 import { en, fmt, type DshGithubKey } from '../src/client/locales.ts'
 import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId, SessionListState, SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
 import type { GitCommitDetail, GitDiff, GitLog, GitOutput, GitRemoteList, GitRepositoryOverview, GitStashList, GitStatus, GitTagList } from '../src/types.ts'
 
-// The runtime value `workspaceTitleOf` is the only value import from the
-// browser-only client-runtime bundle (the rest are erased type imports). Mock
-// it so the test environment never loads the browser module loader.
+// `workspaceTitleOf` is the only value import from the browser-only
+// client-runtime bundle (the rest are erased type imports). Mock it so the
+// test environment never loads the browser module loader.
 vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
   workspaceTitleOf: (cwd: string): string => cwd.split(/[\\/]/).filter(Boolean).pop() ?? '',
 }))
@@ -90,17 +90,17 @@ function makeActions(overrides: Partial<GithubPanelActions> = {}): GithubPanelAc
   }
 }
 
-function sessionSummary(id: string, cwd?: string, displayTitle?: string): SessionSummary {
-  return { id: id as SessionId, displayTitle: displayTitle ?? 'Session', cwd, running: false, blank: false, updatedAt: 0 }
+function summary(id: string, cwd?: string, displayTitle = 'Session'): SessionSummary {
+  return { id: id as SessionId, displayTitle, cwd, running: false, blank: false, updatedAt: 0 }
 }
 
-function sessionState(current: SessionId | undefined, summaries: SessionSummary[]): SessionListState {
+function sessionState(summaries: SessionSummary[]): SessionListState {
   const byId = {} as Record<SessionId, SessionSummary>
-  for (const summary of summaries) byId[summary.id] = summary
+  for (const entry of summaries) byId[entry.id] = entry
   return {
-    ids: summaries.map(summary => summary.id),
+    ids: summaries.map(entry => entry.id),
     byId,
-    current,
+    current: summaries[0]?.id,
     phase: 'ready',
     subagentsByParent: {},
     jobsBySession: {},
@@ -139,142 +139,90 @@ async function flush(): Promise<void> {
   await act(async () => { await new Promise(resolve => { setTimeout(resolve, 0) }) })
 }
 
-async function mountToggle() {
-  const mount = document.createElement('div')
-  document.body.appendChild(mount)
-  const root = createRoot(mount)
-  await act(async () => { root.render(<SourceControlToggle t={t} />) })
-  await flush()
-  return { mount, root }
-}
+const roots: ReturnType<typeof createRoot>[] = []
 
-async function mountOverlay(mock: SessionsMock, actions: GithubPanelActions) {
+async function mountView(sessionId: SessionId, mock: SessionsMock, actions: GithubPanelActions) {
   const mount = document.createElement('div')
   document.body.appendChild(mount)
   const root = createRoot(mount)
+  roots.push(root)
   const useSessions = makeUseSessions(mock)
-  await act(async () => { root.render(<SourceControlOverlayPanel actions={actions} t={t} useSessions={useSessions} />) })
+  await act(async () => {
+    root.render(<SourceControlView sessionId={sessionId} useSessions={useSessions} actions={actions} t={t} />)
+  })
   await flush()
   return { mount, root, useSessions }
 }
 
-beforeEach(() => {
-  registerSourceControlToggle(null)
-  closeSourceControlPanel()
-})
-afterEach(() => { document.body.replaceChildren() })
-
-describe('SourceControlToggle', () => {
-  it('toggles aria-pressed on click', async () => {
-    const { mount } = await mountToggle()
-    const button = mount.querySelector<HTMLButtonElement>('.dsh-github-header-action')
-    expect(button).not.toBeNull()
-    expect(button?.getAttribute('aria-pressed')).toBe('false')
-
-    act(() => { button?.click() })
-    expect(button?.getAttribute('aria-pressed')).toBe('true')
-
-    act(() => { button?.click() })
-    expect(button?.getAttribute('aria-pressed')).toBe('false')
-  })
-
-  it('returns focus to the toggle button on close', async () => {
-    const { mount } = await mountToggle()
-    const button = mount.querySelector<HTMLButtonElement>('.dsh-github-header-action')
-    act(() => { button?.click() })
-    expect(button?.getAttribute('aria-pressed')).toBe('true')
-
-    act(() => { closeSourceControlPanel() })
-    expect(document.activeElement).toBe(button)
-  })
+afterEach(() => {
+  act(() => { for (const root of roots) root.unmount() })
+  roots.length = 0
+  document.body.replaceChildren()
 })
 
-describe('SourceControlOverlayPanel', () => {
-  it('renders null when the panel is closed', async () => {
-    const sessions = makeSessions(sessionState('s1' as SessionId, [sessionSummary('s1', '/repo')]))
-    const { mount } = await mountOverlay(sessions, makeActions())
-    expect(mount.firstChild).toBeNull()
-  })
-
-  it('mounts the panel bound to the session cwd when open', async () => {
-    const sessions = makeSessions(sessionState('s1' as SessionId, [sessionSummary('s1', '/repo', 'My Repo')]))
+describe('SourceControlView', () => {
+  it('mounts the panel for the session cwd with its display title', async () => {
+    const sessions = makeSessions(sessionState([summary('s1', '/p1', 'My Repo')]))
     const actions = makeActions()
-    const { mount } = await mountOverlay(sessions, actions)
-
-    act(() => { toggleSourceControlPanel() })
-    await flush()
+    const { mount } = await mountView('s1' as SessionId, sessions, actions)
 
     expect(mount.querySelector('.dsh-github-panel')).not.toBeNull()
-    expect(actions.getStatus).toHaveBeenCalledWith('/repo', expect.any(AbortSignal))
-    expect(mount.textContent).toContain('My Repo')
+    expect(actions.getStatus).toHaveBeenCalledWith('/p1', expect.any(AbortSignal))
+    expect(mount.querySelector('.dsh-github-panel-header strong')?.textContent).toBe('My Repo')
   })
 
-  it('shows the no-session-cwd hint when the session has no cwd', async () => {
-    const sessions = makeSessions(sessionState('s1' as SessionId, [sessionSummary('s1')]))
+  it('falls back to the workspace basename when displayTitle is empty', async () => {
+    const sessions = makeSessions(sessionState([summary('s1', '/foo/bar/repo', '')]))
     const actions = makeActions()
-    const { mount } = await mountOverlay(sessions, actions)
+    const { mount } = await mountView('s1' as SessionId, sessions, actions)
 
-    act(() => { toggleSourceControlPanel() })
-    await flush()
+    expect(mount.querySelector('.dsh-github-panel')).not.toBeNull()
+    expect(actions.getStatus).toHaveBeenCalledWith('/foo/bar/repo', expect.any(AbortSignal))
+    expect(mount.querySelector('.dsh-github-panel-header strong')?.textContent).toBe('repo')
+  })
 
-    expect(mount.querySelector('.dsh-github-overlay-empty')).not.toBeNull()
+  it('renders the no-session-cwd hint when the session has no cwd', async () => {
+    const sessions = makeSessions(sessionState([summary('s1')]))
+    const actions = makeActions()
+    const { mount } = await mountView('s1' as SessionId, sessions, actions)
+
+    expect(mount.querySelector('.dsh-github-view-empty')).not.toBeNull()
     expect(mount.textContent).toContain('The current session has no workspace path.')
     expect(mount.querySelector('.dsh-github-panel')).toBeNull()
   })
 
-  it('shows the no-session-cwd hint when there is no current session', async () => {
-    const sessions = makeSessions(sessionState(undefined, []))
-    const actions = makeActions()
-    const { mount } = await mountOverlay(sessions, actions)
+  it('renders the no-session-cwd hint when the session is unknown', async () => {
+    const sessions = makeSessions(sessionState([]))
+    const { mount } = await mountView('missing' as SessionId, sessions, makeActions())
 
-    act(() => { toggleSourceControlPanel() })
-    await flush()
-
-    expect(mount.querySelector('.dsh-github-overlay-empty')).not.toBeNull()
-    expect(mount.textContent).toContain('The current session has no workspace path.')
+    expect(mount.querySelector('.dsh-github-view-empty')).not.toBeNull()
     expect(mount.querySelector('.dsh-github-panel')).toBeNull()
   })
 
-  it('closes on the overlay close button', async () => {
-    const sessions = makeSessions(sessionState(undefined, []))
-    const { mount } = await mountOverlay(sessions, makeActions())
-
-    act(() => { toggleSourceControlPanel() })
-    await flush()
-    expect(mount.querySelector('.dsh-github-overlay-empty')).not.toBeNull()
-
-    const closeButton = mount.querySelector<HTMLButtonElement>('button[aria-label="Close"]')
-    expect(closeButton).not.toBeNull()
-    act(() => { closeButton?.click() })
-    await flush()
-
-    expect(mount.firstChild).toBeNull()
-  })
-
-  it('coordinates the toggle and overlay through the shared store', async () => {
-    const sessions = makeSessions(sessionState('s1' as SessionId, [sessionSummary('s1', '/repo')]))
+  it('remounts the panel keyed by session when sessionId changes', async () => {
+    const sessions = makeSessions(sessionState([summary('s1', '/p1'), summary('s2', '/p2')]))
     const actions = makeActions()
-    const toggleMount = document.createElement('div')
-    const overlayMount = document.createElement('div')
-    document.body.appendChild(toggleMount)
-    document.body.appendChild(overlayMount)
-    const toggleRoot = createRoot(toggleMount)
-    const overlayRoot = createRoot(overlayMount)
-    const useSessions = makeUseSessions(sessions)
+    const { root, useSessions } = await mountView('s1' as SessionId, sessions, actions)
+    expect(actions.getStatus).toHaveBeenCalledWith('/p1', expect.any(AbortSignal))
 
     await act(async () => {
-      toggleRoot.render(<SourceControlToggle t={t} />)
-      overlayRoot.render(<SourceControlOverlayPanel actions={actions} t={t} useSessions={useSessions} />)
+      root.render(<SourceControlView sessionId={'s2' as SessionId} useSessions={useSessions} actions={actions} t={t} />)
     })
     await flush()
 
-    expect(overlayMount.querySelector('.dsh-github-panel')).toBeNull()
+    expect(actions.getStatus).toHaveBeenCalledWith('/p2', expect.any(AbortSignal))
+  })
 
-    const toggleButton = toggleMount.querySelector<HTMLButtonElement>('.dsh-github-header-action')
-    act(() => { toggleButton?.click() })
+  it('mounts the panel when the session cwd becomes available', async () => {
+    const sessions = makeSessions(sessionState([summary('s1')]))
+    const actions = makeActions()
+    const { mount } = await mountView('s1' as SessionId, sessions, actions)
+    expect(mount.querySelector('.dsh-github-panel')).toBeNull()
+
+    await act(async () => { sessions.setState(sessionState([summary('s1', '/p1')])) })
     await flush()
 
-    expect(toggleButton?.getAttribute('aria-pressed')).toBe('true')
-    expect(overlayMount.querySelector('.dsh-github-panel')).not.toBeNull()
+    expect(mount.querySelector('.dsh-github-panel')).not.toBeNull()
+    expect(actions.getStatus).toHaveBeenCalledWith('/p1', expect.any(AbortSignal))
   })
 })
