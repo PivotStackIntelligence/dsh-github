@@ -23,7 +23,7 @@ The plugin uses the repository's normal local Git configuration, SSH keys, HTTPS
 
 ## Design notes
 
-See [docs/ANALYSIS.md](docs/ANALYSIS.md) for the state model, VS Code Git alignment, local authentication boundary, and GitHub browser handoff design.
+See [docs/ANALYSIS.md](docs/ANALYSIS.md) for the state model, VS Code Git alignment, local authentication boundary, and GitHub browser handoff design. The panel's visual design follows the DeepSeek design spec — see [docs/UI_DESIGN.md](docs/UI_DESIGN.md).
 
 ## Requirements
 

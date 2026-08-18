@@ -48,6 +48,8 @@ src/client/locales.ts zh/en 词条（DshGithubKey）
 
 Host 侧只有一个 Git 命令入口：固定调用 `execFile('git', args)`，所有路径通过仓库根目录解析并校验，所有写入操作完成后重新读取状态。Client 侧只通过 Typert Remote 调用 Host，不直接访问文件系统或凭据。
 
+视觉层（`src/client/styles.ts`）全部走 `--dsw-*` 主题变量（含 `--ds-font-family-code` 等），仅用中性浅色回退值，无 VS Code 深色硬编码；详见 `docs/UI_DESIGN.md`。
+
 ## 4. 状态模型
 
 插件把一个文件的状态表示为两个 Git 状态列：

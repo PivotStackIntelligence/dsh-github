@@ -23,7 +23,7 @@
 
 ## 实现分析
 
-状态模型、VS Code Git 对齐方式、本地认证边界和 GitHub 浏览器交接设计见 [docs/ANALYSIS.md](docs/ANALYSIS.md)。
+状态模型、VS Code Git 对齐方式、本地认证边界和 GitHub 浏览器交接设计见 [docs/ANALYSIS.md](docs/ANALYSIS.md)。面板视觉遵循 DeepSeek 设计规范，见 [docs/UI_DESIGN.md](docs/UI_DESIGN.md)。
 
 ## 环境要求
 
