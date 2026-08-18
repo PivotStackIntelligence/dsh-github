@@ -42,6 +42,8 @@ const css = `
 .dsh-github-panel-notice{margin:0;padding:8px 16px;background:var(--dsw-alias-state-success-tertiary,#e6f4ea);color:var(--dsw-alias-state-success-primary,#1a7f37);border-bottom:1px solid var(--dsw-alias-border-l1,#e5e5e5);font:${FONT.xs}}
 .dsh-github-panel-message{padding:16px 20px;color:var(--dsw-alias-label-tertiary,#777777)}
 .dsh-github-panel-message.compact{padding:10px 0;font:${FONT.xs}}
+.dsh-github-clean-hint{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 8px}
+.dsh-github-clean-hint .dsh-github-panel-message{margin:0;padding:10px 0}
 
 /* ===== Two-column layout ===== */
 .dsh-github-source-layout{display:flex;flex:1;min-height:0}

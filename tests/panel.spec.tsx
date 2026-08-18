@@ -320,6 +320,44 @@ describe('GithubChangesPanel', () => {
     expect(mount.querySelector('.dsh-github-diff-row.pair')).not.toBeNull()
   })
 
+  it('reveals the latest commit from the clean working-tree state', async () => {
+    const cleanStatus: GitStatus = { ...status, files: [], truncated: false, headSha: 'abc123' }
+    const detail: GitCommitDetail = { sha: 'abc123', shortSha: 'abc', subject: 'subject', body: '', author: 'a', email: 'e', date: '2026-01-01', refs: [], files: [], truncated: false }
+    const log: GitLog = { commits: [{ sha: 'abc123', shortSha: 'abc', subject: 'subject', author: 'a', email: 'e', date: '2026-01-01', refs: [] }], truncated: false }
+    const actions = makeActions({ getStatus: vi.fn(() => ok(cleanStatus)), log: vi.fn(() => ok(log)), showCommit: vi.fn(() => ok(detail)) })
+    const { mount } = await mountPanel(actions)
+
+    const button = [...mount.querySelectorAll<HTMLButtonElement>('button')].find(candidate => candidate.textContent === 'View latest commit')
+    expect(button).toBeDefined()
+    await act(async () => { button!.click(); await flush() })
+
+    expect(actions.log).toHaveBeenCalledWith('/repo', '', expect.any(AbortSignal))
+    expect(actions.showCommit).toHaveBeenCalledWith('/repo', 'abc123', expect.any(AbortSignal))
+    expect(mount.textContent).toContain('subject')
+  })
+
+  it('auto-reveals the new commit after a successful commit', async () => {
+    const stagedStatus: GitStatus = { ...status, files: [{ path: 'a.ts', index: 'A', worktree: ' ', kind: 'added', previousPath: null, fileUrl: null }] }
+    const cleanStatus: GitStatus = { ...status, files: [], truncated: false, headSha: 'abc123' }
+    const detail: GitCommitDetail = { sha: 'abc123', shortSha: 'abc', subject: 'subject', body: '', author: 'a', email: 'e', date: '2026-01-01', refs: [], files: [], truncated: false }
+    const actions = makeActions({
+      getStatus: vi.fn(() => ok(stagedStatus)),
+      commit: vi.fn(() => ok(cleanStatus)),
+      log: vi.fn(() => ok({ commits: [{ sha: 'abc123', shortSha: 'abc', subject: 'subject', author: 'a', email: 'e', date: '2026-01-01', refs: [] }], truncated: false })),
+      showCommit: vi.fn(() => ok(detail)),
+    })
+    const { mount } = await mountPanel(actions)
+
+    setTextareaValue(mount.querySelector('textarea') as HTMLTextAreaElement, 'msg')
+    const commitButton = mount.querySelector<HTMLButtonElement>('button.dsh-github-btn.primary')
+    expect(commitButton?.disabled).toBe(false)
+    await act(async () => { commitButton!.click(); await flush() })
+
+    expect(actions.commit).toHaveBeenCalledWith('/repo', 'msg', false)
+    expect(actions.showCommit).toHaveBeenCalledWith('/repo', 'abc123', expect.any(AbortSignal))
+    expect(mount.textContent).toContain('subject')
+  })
+
   it('fetches a specific remote from the Remotes section', async () => {
     const remotes: GitRemoteList = { remotes: [{ name: 'origin', fetchUrl: 'https://example.com/x.git', pushUrl: 'https://example.com/x.git' }] }
     const actions = makeActions({ remoteList: vi.fn(() => ok(remotes)) })

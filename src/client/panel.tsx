@@ -246,6 +246,15 @@ export function GithubChangesPanel({ path, title, actions, t }: {
     if (expanded.output) loadOutput()
   }
 
+  /** Expand COMMITS, reload the log, and open the given commit's detail so its files are visible. */
+  const revealLatestCommit = (sha: string): void => {
+    setCommitsExpanded(true)
+    loadCommits()
+    setExpandedCommit(sha)
+    setCommitDetail(null)
+    loadSection(`commit:${sha}`, signal => actions.showCommit(path, sha, signal), setCommitDetail)
+  }
+
   const refresh = (clearError = true): void => {
     statusRequest.current?.controller.abort()
     const request = { id: ++requestId.current, controller: new AbortController() }
@@ -276,6 +285,7 @@ export function GithubChangesPanel({ path, title, actions, t }: {
       acceptStatus(result.value)
       void refreshExpandedSections()
       if (opts.clearMessage) setMessage('')
+      if ((name === 'commit' || name === 'commitAndPush' || name === 'commitAndSync') && result.value.headSha !== null) revealLatestCommit(result.value.headSha)
       setNotice(t(`panel.success.${name}`))
     }).catch(reason => {
       setNotice(null)
@@ -296,6 +306,7 @@ export function GithubChangesPanel({ path, title, actions, t }: {
       committed = true
       acceptStatus(result.value)
       setMessage('')
+      if (result.value.headSha !== null) revealLatestCommit(result.value.headSha)
       return kind === 'commitAndPush' ? actions.push(path) : actions.sync(path)
     }).then(result => {
       if (!result.ok) throw new Error(result.error.message)
@@ -634,7 +645,14 @@ export function GithubChangesPanel({ path, title, actions, t }: {
             <button type="button" className="dsh-github-group-action danger" disabled={operation !== null} aria-label={t('panel.discardAll')} title={t('panel.discardAll')} onClick={confirmDiscardAll}>↶</button>
           </> : null)}
           {hasConflicts ? renderGroup('working', conflicts, 'panel.mergeChanges', mergeExpanded, setMergeExpanded, null) : null}
-          {status.files.length === 0 ? <p className="dsh-github-panel-message compact">{t('panel.clean')}</p> : null}
+          {status.files.length === 0
+            ? <div className="dsh-github-clean-hint">
+              <p className="dsh-github-panel-message compact">{t('panel.clean')}</p>
+              {status.headSha !== null
+                ? <button type="button" className="dsh-github-btn" onClick={() => revealLatestCommit(status.headSha!)}>{t('panel.viewLatestCommit')}</button>
+                : null}
+            </div>
+            : null}
           {status.truncated ? <p className="dsh-github-panel-message compact">{t('panel.fileListTruncated')}</p> : null}
 
           <Section title={t('panel.commits')} count={log?.commits.length ?? 0} expanded={commitsExpanded} onToggle={() => setCommitsExpanded(value => !value)}>
