@@ -14,7 +14,7 @@
  * the types re-exported erasure-safely from the published controller types,
  * the helper copied verbatim from
  * `dsh-client-ui-workspace/lib/client.js:257-262` on 0.1.2-rc.1.
- * Author: Ev3nt1ne · port notes 2026-09
+ * Author: Ev3nt1ne · 0.1.2-rc.1 port
  */
 import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'

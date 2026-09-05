@@ -6,12 +6,12 @@ import { DSH_OPEN_PATH_REMOTE } from '../src/client/remote.ts'
 describe('client/sessions', () => {
   // Copied verbatim from dsh-client-ui-workspace@0.1.2-rc.1; keep its shape.
   it('reads the final non-empty path segment for the display title', () => {
-    expect(workspaceTitleOf('/srv/repos/dsh-github')).toBe('dsh-github')
-    expect(workspaceTitleOf('/srv/repos/dsh-github/')).toBe('dsh-github')
+    expect(workspaceTitleOf('/general/repos/dsh-github')).toBe('dsh-github')
+    expect(workspaceTitleOf('/general/repos/dsh-github/')).toBe('dsh-github')
     expect(workspaceTitleOf('C:\\work\\dsh-github')).toBe('dsh-github')
     expect(workspaceTitleOf('')).toBe('')
     expect(workspaceTitleOf('/')).toBe('')
-    expect(workspaceTitleOf('/srv/')).toBe('srv')
+    expect(workspaceTitleOf('/general/')).toBe('general')
   })
 })
 

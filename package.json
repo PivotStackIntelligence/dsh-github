@@ -52,6 +52,19 @@
   "engines": {
     "node": "^22.19 || >=24"
   },
+  "dsh-compatibility": {
+    "recommendedHost": "0.1.2-rc.1",
+    "supportedHosts": [
+      {
+        "version": "0.1.2-rc.1",
+        "track": "recommended"
+      },
+      {
+        "version": "0.1.0-rc.6",
+        "track": "legacy"
+      }
+    ]
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
     "@deepseek-ai/dsh-typert-protocol": "0.1.0-rc.6 || 0.1.2-rc.1",
