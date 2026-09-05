@@ -105,3 +105,40 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
   }
   interface TypertRemoteNamespaceMap { github: TypertRemoteNamespace$676974687562 }
 }
+
+import { literal, object, string } from 'zod'
+
+/**
+ * Client-side mount of the Host's native path opener on hosts from
+ * `0.1.2-rc.1`, where `ctx.workspaces.openPath` no longer exists. The
+ * contribution data mirrors the shipping generated assembly
+ * (`@deepseek-ai/dsh-api-remotes/lib/client.js` on the 0.1.2-rc.1 install):
+ * the same `session/openWorkspacePath` invocation, ids and codecs unchanged,
+ * so the wire contract stays the Host's own.
+ */
+export const DSH_OPEN_PATH_REMOTE: TypertRemoteContribution = {
+  package: '@deepseek-ai/dsh-api-session-controller',
+  descriptors: [{
+    id: '@deepseek-ai/dsh-api-session-controller#session/openWorkspacePath',
+    service: 'sessionController',
+    namespace: 'session',
+    method: 'openWorkspacePath',
+    invocation: { kind: 'direct' },
+    parameters: [{
+      name: 'request',
+      wire: 'request',
+      source: 'json',
+      codec: {
+        mode: 'strict',
+        typeSymbol: '@deepseek-ai/dsh-api-session-controller/types#SessionOpenWorkspacePathRequest',
+        schema: object({ path: string().readonly() }),
+      },
+    }],
+    cancellation: { parameter: 'signal' },
+    result: {
+      mode: 'strict',
+      typeSymbol: '@deepseek-ai/dsh-api-session-controller/types#SessionOpenWorkspacePathValue',
+      schema: object({ opened: literal(true).readonly() }).readonly(),
+    },
+  }],
+}
