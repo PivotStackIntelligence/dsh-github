@@ -7,15 +7,13 @@ import { SourceControlView } from '../src/client/view.tsx'
 import type { GithubPanelActions } from '../src/client/panel.tsx'
 import { en, fmt, type DshGithubKey } from '../src/client/locales.ts'
 import type { SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionId, SessionListState, SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionListState, SessionSummary } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { GitCommitDetail, GitDiff, GitLog, GitOutput, GitRemoteList, GitRepositoryOverview, GitStashList, GitStatus, GitTagList } from '../src/types.ts'
 
-// `workspaceTitleOf` is the only value import from the browser-only
-// client-runtime bundle (the rest are erased type imports). Mock it so the
-// test environment never loads the browser module loader.
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
-  workspaceTitleOf: (cwd: string): string => cwd.split(/[\\/]/).filter(Boolean).pop() ?? '',
-}))
+// `workspaceTitleOf` lives in the plugin's own browser-safe sessions module
+// on 0.1.2-rc.1 (carried out of the removed dsh-client-runtime), so the
+// jsdom tests exercise the real helper with no mock.
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
 

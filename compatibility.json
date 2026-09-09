@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "recommendedHost": "0.1.2-rc.1",
+  "previewTag": "next",
+  "supportedHosts": [
+    { "version": "0.1.2-rc.1", "track": "recommended" },
+    { "version": "0.1.0-rc.6", "track": "legacy" }
+  ]
+}

@@ -7,7 +7,7 @@
  * Author: bugmaker2 · PivotStack Intelligence
  */
 import type { PropsRuntime, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
-import { workspaceTitleOf, type SessionId, type SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
+import { workspaceTitleOf, type SessionId, type SessionListState } from './sessions.ts'
 import { GithubChangesPanel, type GithubPanelActions } from './panel.tsx'
 import type { DshGithubKey } from './locales.ts'
 
