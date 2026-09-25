@@ -53,11 +53,15 @@
     "node": "^22.19 || >=24"
   },
   "dsh-compatibility": {
-    "recommendedHost": "0.1.2-rc.1",
+    "recommendedHost": "0.1.7-rc.2",
     "supportedHosts": [
       {
-        "version": "0.1.2-rc.1",
+        "version": "0.1.7-rc.2",
         "track": "recommended"
+      },
+      {
+        "version": "0.1.2-rc.1",
+        "track": "legacy"
       },
       {
         "version": "0.1.0-rc.6",
@@ -67,11 +71,11 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-typert-protocol": "0.1.0-rc.6 || 0.1.2-rc.1",
-    "@deepseek-ai/dsh-typert-registry": "0.1.0-rc.6 || 0.1.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.6 || 0.1.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-workspace": "0.1.0-rc.6 || 0.1.2-rc.1",
-    "@deepseek-ai/dsh-client-locale": "0.1.0-rc.6 || 0.1.2-rc.1",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.0-rc.6 || 0.1.2-rc.1 || 0.1.7-rc.2",
+    "@deepseek-ai/dsh-typert-registry": "0.1.0-rc.6 || 0.1.2-rc.1 || 0.1.7-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.6 || 0.1.2-rc.1 || 0.1.7-rc.2",
+    "@deepseek-ai/dsh-client-ui-workspace": "0.1.0-rc.6 || 0.1.2-rc.1 || 0.1.7-rc.2",
+    "@deepseek-ai/dsh-client-locale": "0.1.0-rc.6 || 0.1.2-rc.1 || 0.1.7-rc.2",
     "react": "^18.2.0"
   },
   "peerDependenciesMeta": {

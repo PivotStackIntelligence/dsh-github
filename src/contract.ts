@@ -98,9 +98,9 @@ const outputEntrySchema = z.object({
 export const outputResultSchema = z.object({ entries: z.array(outputEntrySchema) }).readonly()
 
 const json = (name: string, wire: string, typeSymbol: string, schema: z.ZodType) => ({
-  name, wire, source: 'json' as const, codec: { mode: 'strict' as const, typeSymbol, schema },
+  name, wire, source: 'json' as const, codec: { mode: 'strict' as const, typeSymbol, schema, create: () => schema },
 })
-const resultOf = (typeSymbol: string, schema: z.ZodType) => ({ mode: 'strict' as const, typeSymbol, schema })
+const resultOf = (typeSymbol: string, schema: z.ZodType) => ({ mode: 'strict' as const, typeSymbol, schema, create: () => schema })
 
 const pathParameter = json('path', 'path', 'dsh-github#Path', pathSchema)
 const filePathParameter = json('filePath', 'filePath', 'dsh-github#FilePath', filePathSchema)
