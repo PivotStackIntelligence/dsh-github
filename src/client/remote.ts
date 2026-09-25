@@ -132,6 +132,7 @@ export const DSH_OPEN_PATH_REMOTE: TypertRemoteContribution = {
         mode: 'strict',
         typeSymbol: '@deepseek-ai/dsh-api-session-controller/types#SessionOpenWorkspacePathRequest',
         schema: object({ path: string().readonly() }),
+        create: () => object({ path: string().readonly() }),
       },
     }],
     cancellation: { parameter: 'signal' },
@@ -139,6 +140,7 @@ export const DSH_OPEN_PATH_REMOTE: TypertRemoteContribution = {
       mode: 'strict',
       typeSymbol: '@deepseek-ai/dsh-api-session-controller/types#SessionOpenWorkspacePathValue',
       schema: object({ opened: literal(true).readonly() }).readonly(),
+      create: () => object({ opened: literal(true).readonly() }).readonly(),
     },
   }],
 }

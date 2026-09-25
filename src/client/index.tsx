@@ -38,16 +38,22 @@ export function apply(ctx: ClientContext): void {
   const t = ctx.locale.bind(NS)
 
   ctx.effect(async () => {
-    const dispose = await ctx.remote.$mount(DSH_GITHUB_REMOTE)
-    github = (ctx.reflect as unknown as { get(name: string): unknown }).get('remote.github')
-    if (github === undefined) throw new Error('dsh-github: the github Remote namespace did not mount')
-    return () => { github = undefined; void dispose() }
+    try {
+      const dispose = await ctx.remote.$mount(DSH_GITHUB_REMOTE)
+      github = (ctx.reflect as unknown as { get(name: string): unknown }).get('remote.github') ?? (ctx as any)['remote.github']
+      if (github === undefined) console.error('dsh-github: the github Remote namespace did not mount')
+      return () => { github = undefined; void dispose() }
+    } catch (err) {
+      console.error('dsh-github: error mounting DSH_GITHUB_REMOTE:', err)
+      throw err
+    }
   }, 'dsh-github: remote')
 
   /** Build one action wrapper that delegates to the mounted namespace. */
   const delegate = (method: string) => (...args: unknown[]): unknown => {
-    if (github === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
-    const fn = (github as Record<string, unknown>)[method]
+    const target = (github ?? (ctx.reflect as unknown as { get(name: string): unknown }).get('remote.github') ?? (ctx as any)['remote.github']) as Record<string, unknown> | undefined
+    if (target === undefined) return Promise.reject(new Error('dsh-github: Git Remote is not mounted'))
+    const fn = target[method]
     if (typeof fn !== 'function') return Promise.reject(new Error(`dsh-github: GitHub method "${method}" is not available`))
     return (fn as (...callArgs: unknown[]) => unknown)(...args)
   }
@@ -64,16 +70,20 @@ export function apply(ctx: ClientContext): void {
   // reflects as `remote.session` under the fiber that mounts it.
   let hoSession: unknown
   ctx.effect(async () => {
-    const dispose = await ctx.remote.$mount(DSH_OPEN_PATH_REMOTE)
-    hoSession = (ctx.reflect as unknown as { get(name: string): unknown }).get('remote.session')
-    return () => { hoSession = undefined; void dispose() }
+    try {
+      const dispose = await ctx.remote.$mount(DSH_OPEN_PATH_REMOTE)
+      hoSession = (ctx.reflect as unknown as { get(name: string): unknown }).get('remote.session') ?? (ctx as any)['remote.session']
+      return () => { hoSession = undefined; void dispose() }
+    } catch {
+      hoSession = (ctx.reflect as unknown as { get(name: string): unknown }).get('remote.session') ?? (ctx as any)['remote.session']
+    }
   }, 'dsh-github: open-path')
 
   actions.openFile = async (root: string, filePath: string): Promise<void> => {
     const path = resolveWorkspacePath(root, filePath)
     const openPath = (ctx.workspaces as Partial<{ openPath(path: string): Promise<void> }> | undefined)?.openPath
     if (typeof openPath === 'function') { await openPath.call(ctx.workspaces, path); return }
-    const session = hoSession as { openWorkspacePath?: (request: { path: string }, signal?: AbortSignal) => Promise<unknown> } | undefined
+    const session = (hoSession ?? (ctx.reflect as unknown as { get(name: string): unknown }).get('remote.session') ?? (ctx as any)['remote.session']) as { openWorkspacePath?: (request: { path: string }, signal?: AbortSignal) => Promise<unknown> } | undefined
     if (typeof session?.openWorkspacePath === 'function') { await session.openWorkspacePath({ path }); return }
     console.warn(`dsh-github: does not offer a native file opener on this host; skipped opening "${path}"`)
   }
